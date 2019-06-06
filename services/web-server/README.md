@@ -275,3 +275,15 @@ Variables:
 ## Data Flow Diagram
 
 ![data flow](https://cldup.com/e3lrkf28ab.png)
+
+## Style Guide
+
+### Contents
+
+* [Schema Field Definitions](#schema-field-definitions)
+ 
+#### Schema Field Definitions
+
+* For fields that trigger an additional request when requested from the client,
+add a comment above the field definition of the form "This field will trigger an additional request."
+to make developers aware of possible performance issues when requesting that field.
