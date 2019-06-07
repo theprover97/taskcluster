@@ -5808,6 +5808,12 @@ pac-resolver@^3.0.0:
     netmask "^1.0.6"
     thunkify "^2.1.2"
 
+packet-nodejs@walac/packet-nodejs:
+  version "0.0.1"
+  resolved "https://codeload.github.com/walac/packet-nodejs/tar.gz/edb31a2ea5d9af99c236137629225051fefd9464"
+  dependencies:
+    request "2.x"
+
 param-case@^1.1.0:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/param-case/-/param-case-1.1.2.tgz#dcb091a43c259b9228f1c341e7b6a44ea0bf9743"
@@ -6558,7 +6564,7 @@ request-ip@^2.0.2:
   dependencies:
     is_js "^0.9.0"
 
-request@^2.61.0, request@^2.65.0, request@^2.73.0, request@^2.78.0, request@^2.83.0, request@^2.86.0:
+request@2.x, request@^2.61.0, request@^2.65.0, request@^2.73.0, request@^2.78.0, request@^2.83.0, request@^2.86.0:
   version "2.88.0"
   resolved "https://registry.yarnpkg.com/request/-/request-2.88.0.tgz#9c2fca4f7d35b592efe57c7f0a55e81052124fef"
   integrity sha512-NAqBSrijGLZdM0WZNsInLJpkJokL72XYjUpnB0iwsRgxh7dB6COrHnTBNwN0E+lHDAJzu7kLAkDeY08z2/A0hg==
@@ -8011,6 +8017,11 @@ util-deprecate@^1.0.1, util-deprecate@^1.0.2, util-deprecate@~1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
+
+util-promisifyall@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/util-promisifyall/-/util-promisifyall-1.0.6.tgz#03439a5a76461e1f71f76954d945cffc8bd6aad8"
+  integrity sha512-l+o62sbaqStC1xt7oEhlafC4jWBgkOjBXvlPwxkvOYmNqpY8dNXuKdOa+VHjkYz2Fw98e0HvJtNKUg0+6hfP2w==
 
 util.promisify@^1.0.0:
   version "1.0.0"

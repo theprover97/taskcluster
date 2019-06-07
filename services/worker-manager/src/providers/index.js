@@ -2,12 +2,14 @@ const {NullProvider} = require('./null');
 const {TestingProvider} = require('./testing');
 const {StaticProvider} = require('./static');
 const {GoogleProvider} = require('./google');
+const {PacketProvider} = require('./packet');
 
 const PROVIDER_TYPES = {
   null: NullProvider,
   testing: TestingProvider,
   static: StaticProvider,
   google: GoogleProvider,
+  packet: PacketProvider,
 };
 
 /**
