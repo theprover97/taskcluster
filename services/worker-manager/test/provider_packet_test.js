@@ -5,6 +5,7 @@ const {PacketProvider} = require('../src/providers/packet');
 const testing = require('taskcluster-lib-testing');
 const _ = require('lodash');
 const sinon = require('sinon');
+const {FakePacket} = require('./fake-packet');
 
 helper.secrets.mockSuite(testing.suiteName(), ['taskcluster', 'azure'], function(mock, skipping) {
   helper.withEntities(mock, skipping);
@@ -34,7 +35,9 @@ helper.secrets.mockSuite(testing.suiteName(), ['taskcluster', 'azure'], function
       estimator: {
         simple: () => 3,
       },
-      fake: true,
+      fakeCloudApis: {
+        packet: new FakePacket(),
+      },
       rootUrl: helper.rootUrl,
       Worker: helper.Worker,
       WorkerPool: helper.WorkerPool,

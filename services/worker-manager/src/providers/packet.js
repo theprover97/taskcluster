@@ -1,9 +1,13 @@
 const {Provider} = require('./provider');
-const Packet = require('packet-nodejs');
 const taskcluster = require('taskcluster-client');
-const promisifyAll = require('util-promisifyall');
 const slugid = require('slugid');
-const {FakePacket} = require('./fake-packet');
+const request = require('superagent');
+
+const PACKET_BASE_URL = 'https://api.packet.net/';
+
+const packetAgent = apiKey => {
+  const agent = request.agent().set('X-Auth-Token', apiKey);
+};
 
 class PacketProvider extends Provider {
   constructor({
@@ -18,7 +22,7 @@ class PacketProvider extends Provider {
     WorkerPool,
     apiKey,
     projectId,
-    fake = false,
+    fakeCloudApis,
   }) {
     super({
       providerId,
@@ -34,10 +38,10 @@ class PacketProvider extends Provider {
 
     this.configSchema = 'config-packet';
 
-    if (fake) {
-      this.packet = promisifyAll(new FakePacket(apiKey));
+    if (fakeCloudApis && fakeCloudApis.packet) {
+      this.packet = fakeCloudApis.packet;
     } else {
-      this.packet = promisifyAll(new Packet(apiKey));
+      this.packet = packetAgent;
     }
     this.projectId = projectId;
   }

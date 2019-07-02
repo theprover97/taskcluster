@@ -32,3 +32,5 @@ Some of the tests will be skipped without additional credentials, but it is fine
 
 To run *all* tests, you will need appropriate Taskcluster credentials.
 Using [taskcluster-cli](https://github.com/taskcluster/taskcluster-cli), run `eval $(taskcluster signin --scope assume:project:taskcluster:tests:taskcluster-worker-manager)`, then run the tests again.
+
+bump
