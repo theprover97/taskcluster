@@ -3,6 +3,344 @@
 <!-- `yarn release` will insert the existing changelog snippets here: -->
 <!-- NEXT RELEASE HERE -->
 
+## v24.1.9
+
+▶ [patch] [bug 1598649](http://bugzil.la/1598649)
+Final bits of release debugging (sorry!)
+
+## v24.1.8
+
+▶ [patch] [bug 1598649](http://bugzil.la/1598649)
+Final bit of debugging of the release process.  No other changes.
+
+## v24.1.7
+
+▶ [patch] [bug 1598649](http://bugzil.la/1598649)
+Further debugging of the release process.
+
+## v24.1.6
+
+▶ [patch] [bug 1598649](http://bugzil.la/1598649)
+Additional changes to the release process.
+
+## v24.1.5
+
+▶ [patch] 
+Changes only to the release process.
+
+## v24.1.4
+
+No changes
+
+## v24.1.3
+
+▶ [patch] [bug 1604175](http://bugzil.la/1604175)
+A task's deadline can now be up to 10 days in the future (replacing the previous limit of 5 days).
+
+▶ [patch] [bug 1605933](http://bugzil.la/1605933)
+Fix possible XSS vulnerability with the lazylog viewer
+
+▶ [patch] [#1660](https://github.com/taskcluster/taskcluster/issues/1660)
+Taskcluster UI now properly displays the error panel in the docs site.
+
+▶ Additional changes not described here: [bug 1588083](http://bugzil.la/1588083), [bug 1598643](http://bugzil.la/1598643), [bug 1598649](http://bugzil.la/1598649), [bug 1602985](http://bugzil.la/1602985), [#1684](https://github.com/taskcluster/taskcluster/issues/1684), [#2130](https://github.com/taskcluster/taskcluster/issues/2130), [#2187](https://github.com/taskcluster/taskcluster/issues/2187), [bug 1598649](http://bugzil.la/1598649).
+
+## v24.1.2
+
+▶ [patch] [#2159](https://github.com/taskcluster/taskcluster/issues/2159)
+Taskcluster UI /auth/scopes view has been revamped to improve the experience and avoid confusions with the Clients and Roles views.
+
+▶ [patch] [#2166](https://github.com/taskcluster/taskcluster/issues/2166)
+Taskcluster UI Worker view now gracefully allows a user to quarantine a worker when a recent task has expired.
+
+▶ [patch] [bug 1537922](http://bugzil.la/1537922)
+The `auth.createClient` API method is now properly idempotent, allowing the same call multiple times in short succession.
+
+▶ [patch] [bug 1603197](http://bugzil.la/1603197)
+The notify service's irc process now logs a bit more contextual information about what it is up to, and ignores some common replies from IRC servers instead of considering them "unhandled".
+
+▶ Additional changes not described here: [#2125](https://github.com/taskcluster/taskcluster/issues/2125), [#2179](https://github.com/taskcluster/taskcluster/issues/2179).
+
+## v24.1.1
+
+▶ [patch] 
+Fix regression in Taskcluster UI custom actions in the task view not being triggered.
+
+▶ [patch] 
+Provisioning logic now counts workers correctly
+
+▶ [patch] [#2155](https://github.com/taskcluster/taskcluster/issues/2155)
+Taskcluster UI no longer takes the user to a different run when expanding the artifacts dropdown.
+
+▶ Additional change not described here: [#2152](https://github.com/taskcluster/taskcluster/issues/2152).
+
+## v24.1.0
+
+▶ [minor] [bug 1599122](http://bugzil.la/1599122)
+Worker Manager now does a better job at keeping provisioning in-sync with reality.
+
+* Workers now have a top-level `capacity` field which is how many tasks it can run at once.
+* Workers now have `lastModified` and `lastChecked` fields which are useful for determining
+  the state the worker is actually in vs what state Taskcluster thinks it is in.
+* When calling `createWorker` manually, you can now specify a capacity for the worker.
+
+▶ [minor] [bug 1587511](http://bugzil.la/1587511)
+WorkerPools can now be configured to terminate workers that fail to register after some amount of time.
+Both of the google and aws providers now support a `lifecycle` object that for now has a single key
+of `registrationTimeout`. It is optional and if it is provided the value is an integer with the number
+of seconds a worker has to register before it is terminated.
+
+This helps catch misconfigured or broken workers before they become zombies or worse.
+
+▶ [patch] [#217](https://github.com/taskcluster/taskcluster/issues/217)
+Taskcluster UI no longer displays duplicated app bars when connecting via SSH.
+
+▶ [patch] [bug 1595749](http://bugzil.la/1595749)
+Taskcluster login now properly handles an edge case where a couple of users were hitting which prevented them to login.
+
+▶ [patch] [bug 1599550](http://bugzil.la/1599550)
+The `auth.sentry_*` Helm parameters are no longer required.  If they are omitted, then the service will start up but the `auth.sentryDSN` REST API method will return 404's.
+
+▶ [patch] [bug 1599893](http://bugzil.la/1599893)
+Worker Manager now takes optional configuration to change the timings on the lib-iterate loops
+that control provisioning. The values are `worker_manager.provisioner_iterate_config` and
+`worker_manager.worker_scanner_iterate_config`. Each is a JSON object where you can set the following:
+
+* `maxFailures` - Which sets how many iterations in a row can fail before the task crashes
+* `maxIterationTime` - How long (in ms) an iteration is allowed to take before it is ended
+* `waitTime` - How long (in ms) to wait in between loops
+
+▶ Additional changes not described here: [#2114](https://github.com/taskcluster/taskcluster/issues/2114), [#2130](https://github.com/taskcluster/taskcluster/issues/2130), [bug 1577839](http://bugzil.la/1577839).
+
+## v24.0.2
+
+▶ [patch] [bug 1602642](http://bugzil.la/1602642)
+The typo in configuration for aws s3 bucket credentialing is fixed.
+
+It was set as `allowdBuckets` and is now `allowedBuckets`
+
+## v24.0.1
+
+▶ [patch] [bug 1601149](http://bugzil.la/1601149)
+The `github.github_private_pem` Helm configuration now correctly accepts a configuration containing raw (unescaped) newlines.
+A change to how configuration values are escaped in the Helm templates caused this support to regress in 24.0.0.
+
+▶ [patch] [#2096](https://github.com/taskcluster/taskcluster/issues/2096)
+Workers in the UI are now displayed in a table instead of cards.
+
+## v24.0.0
+
+▶ [MAJOR] [bug 1598758](http://bugzil.la/1598758)
+Credentials for the `auth.awsS3Credentials` method are no longer specified in Helm properties `auth.aws_access_key_id`, `auth.aws_secret_access_key`, and `auth.aws_region`.  Instead this information is now configured in `auth.aws_credentials_allowed_buckets` as described in [the deployment docs](https://docs.taskcluster.net/docs/manual/deploying/cloud-credentials).  The region is no longer required, but the configuration must now include a list of supported buckets.  For a quick update, set `auth.aws_credentials_allowed_buckets` to `[{"accessKeyId": "<access_key_id>", "secretAccessKey": "<secret_access_key>", "buckets": ["<bucket_name>"]}]`.
+
+▶ [MAJOR] 
+Services that previously used hard-coded values despite advertising Helm parameters now honor those optional Helm parameters:
+* `notify.irc_port`
+* `github.provisioner_id`
+* `github.worker_type`
+
+The last two parameters name a worker pool (`<provisioner_id>/<worker_type>`) that is used as a default for older (v0) `.taskcluster.yml` files.
+Rather than set these parameters, users should be encouraged to set the values explicitly in `.taskcluster.yml`.
+
+The notify service no longer accepts Helm configuration property `notify.irc_pulse_queue_name`.  No known deployment has this value set.
+
+▶ [MAJOR] [bug 1577785](http://bugzil.la/1577785)
+The Helm configuration properties `queue.public_blob_artifact_bucket`,  `queue.private_blob_artifact_bucket`,  and `queue.blob_artifact_region` are no longer allowed, as the artifact types these configured are no longer supported.
+
+▶ [MAJOR] [bug 1598329](http://bugzil.la/1598329)
+The long-deprecated `queue.pollTaskUrls` API method has been removed.
+
+▶ [minor] [bug 1585157](http://bugzil.la/1585157)
+All current worker-manager's API endpoints, queue's artifact-related endpoints, working and non-checks-related github's endpoints, and the listLastFires endpoint are being graduated from experimental status to stable.
+
+▶ [minor] [bug 1596615](http://bugzil.la/1596615)
+Switch to Node 12.13.0
+
+▶ [minor] [#895](https://github.com/taskcluster/taskcluster/issues/895)
+Taskcluster UI now uses the v4 version of material-ui. It was previously running on v3.
+
+▶ [minor] [#450](https://github.com/taskcluster/taskcluster/issues/450)
+Taskcluster docs now supports quick search.
+
+▶ [minor] [bug 1518190](http://bugzil.la/1518190)
+Taskcluster now supports backups, restores, and verification of Azure tables and containers.  See the [deployment docs](https://docs.taskcluster.net/docs/manual/deploying/backups) for details.
+
+▶ [minor] [#2028](https://github.com/taskcluster/taskcluster/issues/2028)
+The Taskcluster Python client now has helper classes to ease integration into customers' projects.
+
+▶ [patch] [bug 1599291](http://bugzil.la/1599291)
+Added logging around worker provisioning logic to keep better track of workers.
+
+* `worker-requested`, `worker-running`, `worker-stopped` are all three new log messages
+  that allow you to track the lifecycle of workers
+* `scan-seen` reports on the state of the world that the worker-scanner
+  has observed on each run
+* `simple-estimator` messages now have an error status if `runningCapacity` is greater
+   than `maxCapacity`. This state occurs due to a bug in worker-manager and should be
+   reported to the taskcluster team if it occurs
+*  This state will also report an error to a configured error reporter if you have one.
+
+▶ [patch] 
+Fix URL construction for signing in with multiple scopes.
+
+▶ [patch] [bug 1597331](http://bugzil.la/1597331)
+Instances created by the AWS provider now have an explicit `WorkerPoolId` tag.  The Google provider now supplies `created-by` and `owner` tags.
+
+▶ [patch] [#1398](https://github.com/taskcluster/taskcluster/issues/1398)
+Taskcluster UI "Compare Scopesets" and "Expand Scopesets" views now deeply linked. In other words, you can share the URL and still preserve state.
+
+▶ [patch] [bug 1600125](http://bugzil.la/1600125)
+Taskcluster UI Secret view no longer requires the save button to be under the code editor to save a secret.
+
+▶ [patch] [bug 1600127](http://bugzil.la/1600127)
+Taskcluster UI Secret view now allows making modifications to the secret multiple times without having to reload the page.
+
+▶ [patch] [#2073](https://github.com/taskcluster/taskcluster/issues/2073)
+Taskcluster UI Task view now properly links to the Worker view when clicking on the Worker ID.
+
+▶ [patch] [#2078](https://github.com/taskcluster/taskcluster/issues/2078)
+Taskcluster UI Workers view now include quarantined workers by default without having to toggle the filter dropdown.
+
+▶ [patch] [#1909](https://github.com/taskcluster/taskcluster/issues/1909)
+Taskcluster UI log viewer now displays the log name in the app bar.
+
+▶ [patch] [#1558](https://github.com/taskcluster/taskcluster/issues/1558)
+Taskcluster UI no longer requires two clicks to return back to the list of resources after editing a resource (e.g., a secret).
+
+▶ [patch] [#1913](https://github.com/taskcluster/taskcluster/issues/1913)
+Taskcluster UI no longer uses the same status color for pending and unscheduled labels.
+
+▶ [patch] [#2005](https://github.com/taskcluster/taskcluster/issues/2005)
+Taskcluster UI now adds more accuracy when displaying the distance between given dates in words.
+
+▶ [patch] [#1685](https://github.com/taskcluster/taskcluster/issues/1685)
+Taskcluster UI now allows editing a worker pool that is scheduled for deletion.
+
+▶ [patch] [bug 1597276](http://bugzil.la/1597276)
+Taskcluster UI now doesn't open artifacts in the log viewer by default when the file is not plain text.
+
+▶ [patch] [#1874](https://github.com/taskcluster/taskcluster/issues/1874)
+Taskcluster UI now properly aligns menu items in  action menu (speed dial).
+
+▶ [patch] [#2076](https://github.com/taskcluster/taskcluster/issues/2076)
+Taskcluster UI speed dial component no longer toggles on hover.
+
+▶ [patch] 
+Taskcluster login no longer throws a TypeError when a profile from the PersonAPI has no identities when logging in via auth0.
+
+▶ [patch] [bug 1597922](http://bugzil.la/1597922)
+Taskcluster now has the necessary CSP headers to avoid clickjacking.
+
+▶ [patch] [bug 1596098](http://bugzil.la/1596098)
+The Queue and Hooks services now return a 400 error when an entity is too large for the storage backend, instead of a 500.
+
+▶ [patch] [#1949](https://github.com/taskcluster/taskcluster/issues/1949)
+The Task view in Taskcluster UI now allows users to have the artifacts panel expanded on page load  if the url has the artifacts hash (i.e., #artifacts)
+
+▶ [patch] [#1900](https://github.com/taskcluster/taskcluster/issues/1900)
+The Taskcluster UI Task view now shows "Reason Resolved" above the fold. You previously had to click "See More" to find this field.
+
+▶ [patch] [#1997](https://github.com/taskcluster/taskcluster/issues/1997)
+The log view in Taskcluster UI now properly scrolls horizontally. Some users were experiencing text truncation for long lines as well as scrolling issues on mobile.
+
+▶ [patch] [bug 1599564](http://bugzil.la/1599564)
+The purge-cache service now recovers better from Azure errors, where previously a single Azure error would cause subsequent API calls to also fail until the service was restarted.
+
+▶ [patch] [#1455](https://github.com/taskcluster/taskcluster/issues/1455)
+The schema viewer in Taskcluster UI now properly shows a tooltip when pattern is cut off.
+
+▶ [patch] [bug 1491551](http://bugzil.la/1491551)
+When an API request times out, the JS client now correctly retuns an error describing a timeout with `err.code === 'ECONNABORTED'`, instead of `err.code === 'ABORTED'`.
+
+▶ [patch] [#1715](https://github.com/taskcluster/taskcluster/issues/1715)
+Worker Manager UI now provides a more recent version of workerPool configs for initial values.
+
+▶ [patch] [bug 1599122](http://bugzil.la/1599122)
+Worker-manager's AWS provider now more precisely aligns its worker-spawning counts to the desired capacity.  Due to rounding, it may previously have spawned up to one additional instance per launchConfig.
+
+▶ [patch] [bug 1586839](http://bugzil.la/1586839)
+getInstallations endpoint was renamed to listInstallations in octokit. This patch fixes our call to the API
+
+▶ Additional changes not described here: [bug 1511676](http://bugzil.la/1511676), [bug 1579496](http://bugzil.la/1579496), [bug 1588096](http://bugzil.la/1588096), [bug 1596171](http://bugzil.la/1596171), [bug 1598643](http://bugzil.la/1598643), [bug 1598788](http://bugzil.la/1598788), [bug 1599299](http://bugzil.la/1599299), [#1244](https://github.com/taskcluster/taskcluster/issues/1244), [#1412](https://github.com/taskcluster/taskcluster/issues/1412), [#1421](https://github.com/taskcluster/taskcluster/issues/1421), [#1658](https://github.com/taskcluster/taskcluster/issues/1658), [#1747](https://github.com/taskcluster/taskcluster/issues/1747), [#1751](https://github.com/taskcluster/taskcluster/issues/1751), [#1774](https://github.com/taskcluster/taskcluster/issues/1774), [#1822](https://github.com/taskcluster/taskcluster/issues/1822), [#1908](https://github.com/taskcluster/taskcluster/issues/1908), [#1953](https://github.com/taskcluster/taskcluster/issues/1953), [#2019](https://github.com/taskcluster/taskcluster/issues/2019), [#677](https://github.com/taskcluster/taskcluster/issues/677), [#1911](https://github.com/taskcluster/taskcluster/issues/1911), [#1968](https://github.com/taskcluster/taskcluster/issues/1968), [#1754](https://github.com/taskcluster/taskcluster/issues/1754), [#1934](https://github.com/taskcluster/taskcluster/issues/1934), [bug 1596417](http://bugzil.la/1596417), [#1773](https://github.com/taskcluster/taskcluster/issues/1773).
+
+## v23.0.0
+
+▶ [MAJOR] 
+Support for several deprecated services has been removed.
+* The login service has been removed from the codebase and from all client libraries.  It was retired on November 9, 2019 when the external services that depended on it migrated to third-party login support.  It was never part of the Helm deployment.
+* Support for the deprecated ec2-manager and aws-provisioner services has been removed from all client libraries.  These services are no longer running, so this should have minimal impact.
+* Support for the long-removed events service and the never-released gce-provisioner service has been removed from the Go client.
+
+▶ [MAJOR] 
+The Taskcluster Go client no longer uses the deprecated concept of BaseURL, instead requiring a RootURL.  Users of the `New` and `NewFromEnv` functions do not need to change anything.  However, any code that has manually constructed a client object, or set such an object's `BaseURL` property, must be updated to use `RootURL` instead.
+
+▶ [MAJOR] 
+The `auth.statsumToken` method has been removed.  The service for which this returns a token has not run for over a year, so the impact is minimal.
+
+▶ [MAJOR] [bug 1577785](http://bugzil.la/1577785)
+The artifact types `blob` and `azure` are no longer supported.  Neither of these types has seen real use, and both are broken in all known deployments of Taskcluster.
+
+The [Object Service](https://bugzilla.mozilla.org/show_bug.cgi?id=1471582) will implement much of the same functionality, but likely with subtle differences.  Removing these unused artifact types now will simplify migration to the Object Service once it is developed.
+
+▶ [MAJOR] 
+The auth service no longer accepts Helm configuration properties `auth.client_table_name` or `auth.role_container_name`.  These values are now assumed to be `Clients` and `auth-production-roles`, respectively.  No known deployments of Taskcluster use any other value.
+
+The auth service now honors `sentry_organization`, `sentry_host`, `sentry_team`, and `sentry_key_prefix`.  Previously, the values of these properties were ignored.
+
+▶ [minor] [#1923](https://github.com/taskcluster/taskcluster/issues/1923)
+The web-server service now uses its own azure session table to keep track of sessions. This solves the following issues:
+* Restarting the web-server service clears all user sessions
+* Spinning up multiple werb-server services for load balancing is not possible since we stored sessions in memory and the latter belong to a single instance
+
+▶ [patch] [bug 1595221](http://bugzil.la/1595221)
+Adds an LRU cache to getTask method, so that we don't have to make too many calls to Azure (tasks are immutable anyways)
+The default value for the cache size is 10. The name of the optional prop in the dev-config.yml is `queue.task_cache_max_size`
+
+▶ [patch] [bug 1595838](http://bugzil.la/1595838)
+Errors completing a blob artifact upload are no longer returned with statusCode 500.
+
+▶ [patch] [#1962](https://github.com/taskcluster/taskcluster/issues/1962)
+Taskcluster UI error panels are now scrollable.
+
+▶ [patch] [bug 1574854](http://bugzil.la/1574854)
+Taskcluster UI now does not show a "404" text when a page could not be found in the UI so as not to pretend an HTTP response code that didn't occur.
+
+▶ [patch] [bug 1595734](http://bugzil.la/1595734)
+Taskcluster UI now properly creates interactive tasks from the task creator.
+
+▶ [patch] [#1881](https://github.com/taskcluster/taskcluster/issues/1881)
+Taskcluster UI now properly renders the task title in the app bar.
+
+▶ [patch] [bug 1595418](http://bugzil.la/1595418)
+Taskcluster UI now properly shows task dependencies of tasks that don't have a decision task.
+A task with no decision task is a common thing to have outside the firefox-ci cluster.
+
+▶ [patch] [#1951](https://github.com/taskcluster/taskcluster/issues/1951)
+Taskcluster UI now properly shows the Quarantine Until date.
+
+▶ [patch] [#1972](https://github.com/taskcluster/taskcluster/issues/1972)
+Taskcluster UI now shows up to 1000 workers and worker-types in the paginated table. We previously only showed ~15 rows per page.
+
+▶ [patch] [bug 1595667](http://bugzil.la/1595667)
+Taskcluster third-party login  UI now instructs users to sign in to provide credentials to a third party registered client instead of showing them the home page.
+
+▶ [patch] [bug 1596523](http://bugzil.la/1596523)
+Taskcluster web-server process will stop crashing when something goes wrong when logging in.
+
+▶ [patch] [#1988](https://github.com/taskcluster/taskcluster/issues/1988)
+The built-in retrigger action no longer removes fields like `taskId` from within the task definition.
+
+▶ [patch] [bug 1593762](http://bugzil.la/1593762)
+The google provider now accepts workerpools with underscores in the name
+
+▶ [patch] [bug 1595238](http://bugzil.la/1595238)
+The queue service now polls Azure queues for deadline, dependency, and task claims less frequently when those queues are empty.  This should reduce the rate of GetMessageRead and GetMessagesRead Azure API calls.
+
+▶ [patch] [bug 1579065](http://bugzil.la/1579065)
+This release upgrades Hawk, the underlying authentication mechanism for REST API access, to `@hapi/hawk` since the older `hawk` dependency is depreciated.
+
+▶ Additional changes not described here: [bug 1596531](http://bugzil.la/1596531), [bug 1585141](http://bugzil.la/1585141), [#1946](https://github.com/taskcluster/taskcluster/issues/1946), [#1995](https://github.com/taskcluster/taskcluster/issues/1995).
+
 ## v22.1.1
 
 ▶ [patch] 

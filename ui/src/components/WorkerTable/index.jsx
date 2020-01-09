@@ -1,13 +1,10 @@
 import React, { Component } from 'react';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import Typography from '@material-ui/core/Typography';
-import ListItemText from '@material-ui/core/ListItemText';
 import memoize from 'fast-memoize';
 import LinkIcon from 'mdi-react/LinkIcon';
 import { withStyles } from '@material-ui/core/styles';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
+import CopyToClipboardTableCell from '../CopyToClipboardTableCell';
 import TableCellItem from '../TableCellItem';
 import DateDistance from '../DateDistance';
 import DataTable from '../DataTable';
@@ -18,11 +15,11 @@ import Link from '../../utils/Link';
 
 @withStyles(theme => ({
   dateListItem: {
-    marginLeft: -theme.spacing.unit,
-    padding: theme.spacing.unit,
+    marginLeft: -theme.spacing(1),
+    padding: theme.spacing(1),
   },
   taskName: {
-    marginRight: theme.spacing.unit,
+    marginRight: theme.spacing(1),
     maxWidth: 250,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -31,8 +28,8 @@ import Link from '../../utils/Link';
     display: 'inline-block',
   },
   infoButton: {
-    marginLeft: -theme.spacing.double,
-    marginRight: theme.spacing.unit,
+    marginLeft: -theme.spacing(2),
+    marginRight: theme.spacing(1),
   },
 }))
 /**
@@ -62,8 +59,12 @@ export default class WorkerTable extends Component {
       const tasks = worker.recentTasks.reduce(
         (tasks, recentTask, index) =>
           tasks.concat({
+            // Sometimes a run expires so we try to get at least the taskId
+            ...(recentTask.taskId ? { taskId: recentTask.taskId } : null),
             ...recentTask.run,
-            ...worker.latestTasks[index].metadata,
+            ...(worker.latestTasks[index]
+              ? worker.latestTasks[index].metadata
+              : null),
           }),
         []
       );
@@ -127,52 +128,43 @@ export default class WorkerTable extends Component {
         renderRow={task => (
           <TableRow key={`recent-task-${task.taskId}`}>
             <TableCell>
-              <StatusLabel state={task.state} />
+              {task.state ? <StatusLabel state={task.state} /> : <em>n/a</em>}
             </TableCell>
             <TableCell>
-              <TableCellItem
-                button
-                component={Link}
-                to={`/tasks/${task.taskId}/runs/${task.runId}`}>
-                <div className={classes.taskName}>{task.name}</div>
-                <LinkIcon size={iconSize} />
-              </TableCellItem>
+              {task.name ? (
+                <Link to={`/tasks/${task.taskId}/runs/${task.runId}`}>
+                  <TableCellItem button>
+                    <div className={classes.taskName}>{task.name}</div>
+                    <LinkIcon size={iconSize} />
+                  </TableCellItem>
+                </Link>
+              ) : (
+                <em>n/a</em>
+              )}
             </TableCell>
             <TableCell>{task.taskId}</TableCell>
-            <CopyToClipboard title={task.started} text={task.started}>
+            {task.started ? (
+              <CopyToClipboardTableCell
+                tooltipTitle={task.started}
+                textToCopy={task.started}
+                text={<DateDistance from={task.started} />}
+              />
+            ) : (
               <TableCell>
-                <TableCellItem button>
-                  <ListItemText
-                    disableTypography
-                    primary={
-                      <Typography>
-                        <DateDistance from={task.started} />
-                      </Typography>
-                    }
-                  />
-                  <ContentCopyIcon size={iconSize} />
-                </TableCellItem>
+                <em>n/a</em>
               </TableCell>
-            </CopyToClipboard>
-            <CopyToClipboard title={task.resolved} text={task.resolved}>
+            )}
+            {task.resolved ? (
+              <CopyToClipboardTableCell
+                tooltipTitle={task.resolved}
+                textToCopy={task.resolved}
+                text={<DateDistance from={task.resolved} />}
+              />
+            ) : (
               <TableCell>
-                {task.resolved ? (
-                  <TableCellItem button>
-                    <ListItemText
-                      disableTypography
-                      primary={
-                        <Typography>
-                          <DateDistance from={task.resolved} />
-                        </Typography>
-                      }
-                    />
-                    <ContentCopyIcon size={iconSize} />
-                  </TableCellItem>
-                ) : (
-                  <Typography>n/a</Typography>
-                )}
+                <em>n/a</em>
               </TableCell>
-            </CopyToClipboard>
+            )}
           </TableRow>
         )}
         headers={headers}

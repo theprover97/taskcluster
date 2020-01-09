@@ -14,6 +14,7 @@ const { Auth } = require('taskcluster-client');
 const monitorManager = require('./monitor');
 const createApp = require('./servers/createApp');
 const formatError = require('./servers/formatError');
+const clients = require('./clients');
 const createContext = require('./createContext');
 const createSchema = require('./createSchema');
 const createSubscriptionServer = require('./servers/createSubscriptionServer');
@@ -46,10 +47,10 @@ const load = loader(
     pulseClient: {
       requires: ['cfg', 'monitor'],
       setup: ({ cfg, monitor }) => {
-        if (!cfg.pulse.namespace) {
+        if (!cfg.pulse.username) {
           assert(
             process.env.NODE_ENV !== 'production',
-            'cfg.pulse.namespace is required',
+            'pulse credentials are required in production',
           );
 
           return null;
@@ -85,10 +86,16 @@ const load = loader(
         }),
     },
 
+    clients: {
+      requires: [],
+      setup: () => clients,
+    },
+
     context: {
-      requires: ['cfg', 'pulseEngine', 'strategies', 'monitor'],
-      setup: ({ cfg, pulseEngine, strategies, monitor }) =>
+      requires: ['cfg', 'pulseEngine', 'strategies', 'clients', 'monitor'],
+      setup: ({ cfg, pulseEngine, strategies, clients, monitor }) =>
         createContext({
+          clients,
           pulseEngine,
           rootUrl: cfg.taskcluster.rootUrl,
           strategies,
@@ -178,11 +185,11 @@ const load = loader(
     AuthorizationCode: {
       requires: ['cfg', 'monitor'],
       setup: ({cfg, monitor}) => AuthorizationCode.setup({
-        tableName: 'AuthorizationCodesTable',
+        tableName: cfg.app.authorizationCodesTableName,
         monitor: monitor.childMonitor('table.authorizationCodes'),
         credentials: sasCredentials({
           accountId: cfg.azure.accountId,
-          tableName: 'AuthorizationCodesTable',
+          tableName: cfg.app.authorizationCodesTableName,
           rootUrl: cfg.taskcluster.rootUrl,
           credentials: cfg.taskcluster.credentials,
         }),
@@ -193,11 +200,11 @@ const load = loader(
     AccessToken: {
       requires: ['cfg', 'monitor'],
       setup: ({cfg, monitor}) => AccessToken.setup({
-        tableName: 'AccessTokenTable',
+        tableName: cfg.app.accessTokenTableName,
         monitor: monitor.childMonitor('table.accessTokenTable'),
         credentials: sasCredentials({
           accountId: cfg.azure.accountId,
-          tableName: 'AccessTokenTable',
+          tableName: cfg.app.accessTokenTableName,
           rootUrl: cfg.taskcluster.rootUrl,
           credentials: cfg.taskcluster.credentials,
         }),
@@ -209,11 +216,11 @@ const load = loader(
     SessionStorage: {
       requires: ['cfg', 'monitor'],
       setup: ({cfg, monitor}) => SessionStorage.setup({
-        tableName: 'SessionStorageTable',
+        tableName: cfg.app.sessionStorageTableName,
         monitor: monitor.childMonitor('table.sessionStorageTable'),
         credentials: sasCredentials({
           accountId: cfg.azure.accountId,
-          tableName: 'SessionStorageTable',
+          tableName: cfg.app.sessionStorageTableName,
           rootUrl: cfg.taskcluster.rootUrl,
           credentials: cfg.taskcluster.credentials,
         }),
@@ -225,11 +232,11 @@ const load = loader(
     GithubAccessToken: {
       requires: ['cfg', 'monitor'],
       setup: ({cfg, monitor}) => GithubAccessToken.setup({
-        tableName: 'GithubAccessTokenTable',
+        tableName: cfg.app.githubAccessTokenTableName,
         monitor: monitor.childMonitor('table.githubAccessTokenTable'),
         credentials: sasCredentials({
           accountId: cfg.azure.accountId,
-          tableName: 'GithubAccessTokenTable',
+          tableName: cfg.app.githubAccessTokenTableName,
           rootUrl: cfg.taskcluster.rootUrl,
           credentials: cfg.taskcluster.credentials,
         }),

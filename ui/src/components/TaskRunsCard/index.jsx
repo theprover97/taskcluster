@@ -2,7 +2,6 @@ import React, { Fragment, Component } from 'react';
 import { withRouter } from 'react-router-dom';
 import classNames from 'classnames';
 import { func, number, string } from 'prop-types';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import Label from '@mozilla-frontend-infra/components/Label';
 import { withStyles } from '@material-ui/core/styles';
 import { fade } from '@material-ui/core/styles/colorManipulator';
@@ -21,13 +20,13 @@ import ChevronLeftIcon from 'mdi-react/ChevronLeftIcon';
 import ChevronUpIcon from 'mdi-react/ChevronUpIcon';
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon';
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import LinkIcon from 'mdi-react/LinkIcon';
 import LockIcon from 'mdi-react/LockIcon';
 import LockOpenOutlineIcon from 'mdi-react/LockOpenOutlineIcon';
 import OpenInNewIcon from 'mdi-react/OpenInNewIcon';
 import Button from '../Button';
 import ConnectionDataTable from '../ConnectionDataTable';
+import CopyToClipboardListItem from '../CopyToClipboardListItem';
 import DateDistance from '../DateDistance';
 import StatusLabel from '../StatusLabel';
 import NoRunsIcon from './NoRunsIcon';
@@ -41,23 +40,23 @@ const DOTS_VARIANT_LIMIT = 5;
 @withStyles(
   theme => ({
     headline: {
-      paddingLeft: theme.spacing.double,
-      paddingRight: theme.spacing.double,
+      paddingLeft: theme.spacing(2),
+      paddingRight: theme.spacing(2),
     },
     cardContent: {
       paddingLeft: 0,
       paddingRight: 0,
-      paddingTop: theme.spacing.double,
-      paddingBottom: theme.spacing.double,
-      '&:last-child': {
-        paddingBottom: theme.spacing.triple,
-      },
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(2),
+    },
+    collapsedCard: {
+      paddingBottom: 0,
     },
     controls: {
       display: 'flex',
       alignItems: 'center',
-      paddingLeft: theme.spacing.unit,
-      paddingBottom: theme.spacing.unit,
+      paddingLeft: theme.spacing(1),
+      paddingBottom: theme.spacing(1),
     },
     listItemButton: {
       ...theme.mixins.listItemButton,
@@ -66,7 +65,7 @@ const DOTS_VARIANT_LIMIT = 5;
       cursor: 'pointer',
     },
     logButton: {
-      marginRight: theme.spacing.unit,
+      marginRight: theme.spacing(1),
     },
     artifactsListItemContainer: {
       display: 'block',
@@ -93,6 +92,7 @@ const DOTS_VARIANT_LIMIT = 5;
     artifactNameWrapper: {
       display: 'inline-flex',
       flexBasis: '50%',
+      flexGrow: 1,
     },
     artifactName: {
       display: 'flex',
@@ -100,8 +100,23 @@ const DOTS_VARIANT_LIMIT = 5;
       justifyContent: 'center',
     },
     liveLogLabel: {
-      marginLeft: theme.spacing.unit / 2,
-      marginBottom: theme.spacing.unit / 2,
+      marginLeft: theme.spacing(0.5),
+      marginBottom: theme.spacing(0.5),
+    },
+    previousPageArrow: {
+      marginRight: 0,
+      '& .mdi-icon': {
+        fill: 'currentcolor',
+      },
+    },
+    nextPageArrow: {
+      marginRight: 0,
+      '& .mdi-icon': {
+        fill: 'currentcolor',
+      },
+    },
+    lockIconDiv: {
+      marginRight: theme.spacing(2),
     },
   }),
   { withTheme: true }
@@ -136,7 +151,6 @@ export default class TaskRunsCard extends Component {
   };
 
   state = {
-    showArtifacts: false,
     showMore: false,
   };
 
@@ -169,21 +183,26 @@ export default class TaskRunsCard extends Component {
   };
 
   handleNext = () => {
-    const { history } = this.props;
+    const { location, history } = this.props;
     const { taskId, runId } = this.getCurrentRun();
 
-    history.push(`/tasks/${taskId}/runs/${runId + 1}`);
+    history.push(`/tasks/${taskId}/runs/${runId + 1}${location.hash}`);
   };
 
   handlePrevious = () => {
-    const { history } = this.props;
+    const { location, history } = this.props;
     const { taskId, runId } = this.getCurrentRun();
 
-    history.push(`/tasks/${taskId}/runs/${runId - 1}`);
+    history.push(`/tasks/${taskId}/runs/${runId - 1}${location.hash}`);
   };
 
   handleToggleArtifacts = () => {
-    this.setState({ showArtifacts: !this.state.showArtifacts });
+    const { location, history } = this.props;
+    const showArtifacts = location.hash === '#artifacts';
+
+    showArtifacts
+      ? history.replace(location.pathname)
+      : history.replace(`${location.pathname}#artifacts`);
   };
 
   getLiveLogArtifactFromRun = run => {
@@ -241,7 +260,7 @@ export default class TaskRunsCard extends Component {
               <Link
                 className={classes.artifactLink}
                 to={this.getArtifactUrl(artifact)}>
-                <div>
+                <div className={classes.lockIconDiv}>
                   {artifact.isPublic && <LockOpenOutlineIcon />}
                   {!artifact.isPublic && artifact.url && <LockIcon />}
                 </div>
@@ -251,9 +270,7 @@ export default class TaskRunsCard extends Component {
                       LOG
                     </Label>
                   )}
-                  <div className={classes.artifactName}>
-                    <Typography>{artifact.name}</Typography>
-                  </div>
+                  <div className={classes.artifactName}>{artifact.name}</div>
                 </div>
                 <div>
                   {artifact.isPublic && <LinkIcon />}
@@ -280,14 +297,20 @@ export default class TaskRunsCard extends Component {
       workerType,
       theme,
     } = this.props;
-    const { showArtifacts, showMore } = this.state;
+    const { showMore } = this.state;
     const run = this.getCurrentRun();
     const liveLogArtifact = this.getLiveLogArtifactFromRun(run);
+    const showArtifacts = window.location.hash === '#artifacts';
 
     return (
       <Card raised>
         <div>
-          <CardContent classes={{ root: classes.cardContent }}>
+          <CardContent
+            classes={{
+              root: classNames(classes.cardContent, {
+                [classes.collapsedCard]: !showMore && run,
+              }),
+            }}>
             <Typography variant="h5" className={classes.headline}>
               {run ? `Task Run ${selectedRunId}` : 'Task Run'}
             </Typography>
@@ -301,27 +324,25 @@ export default class TaskRunsCard extends Component {
                     />
                   </ListItem>
                   {liveLogArtifact && (
-                    <ListItem
-                      button
-                      className={classes.listItemButton}
-                      component={Link}
-                      to={this.getArtifactUrl(liveLogArtifact)}>
-                      <ListItemText
-                        primary={
-                          <Fragment>
-                            View Live Log{' '}
-                            <Label
-                              status="info"
-                              mini
-                              className={classes.liveLogLabel}>
-                              LOG
-                            </Label>
-                          </Fragment>
-                        }
-                        secondary={liveLogArtifact.name}
-                      />
-                      <LinkIcon />
-                    </ListItem>
+                    <Link to={this.getArtifactUrl(liveLogArtifact)}>
+                      <ListItem button className={classes.listItemButton}>
+                        <ListItemText
+                          primary={
+                            <Fragment>
+                              View Live Log{' '}
+                              <Label
+                                status="info"
+                                mini
+                                className={classes.liveLogLabel}>
+                                LOG
+                              </Label>
+                            </Fragment>
+                          }
+                          secondary={liveLogArtifact.name}
+                        />
+                        <LinkIcon />
+                      </ListItem>
+                    </Link>
                   )}
                   <ListItem
                     button
@@ -341,63 +362,72 @@ export default class TaskRunsCard extends Component {
                       </ListItem>
                     </List>
                   </Collapse>
-                  <CopyToClipboard
-                    title={`${run.scheduled} (Copy)`}
-                    text={run.scheduled}>
-                    <ListItem button className={classes.listItemButton}>
-                      <ListItemText
-                        primary="Scheduled"
-                        secondary={<DateDistance from={run.scheduled} />}
-                      />
-                      <ContentCopyIcon />
-                    </ListItem>
-                  </CopyToClipboard>
-                  <CopyToClipboard
-                    title={`${run.started} (Copy)`}
-                    text={run.started}>
-                    <ListItem button className={classes.listItemButton}>
-                      <ListItemText
-                        primary="Started"
-                        secondary={
-                          run.started ? (
-                            <DateDistance
-                              from={run.started}
-                              offset={run.scheduled}
-                            />
-                          ) : (
-                            <em>n/a</em>
-                          )
-                        }
-                      />
-                      <ContentCopyIcon />
-                    </ListItem>
-                  </CopyToClipboard>
-                  <CopyToClipboard
-                    title={`${run.resolved} (Copy)`}
-                    text={run.resolved}>
-                    <ListItem button className={classes.listItemButton}>
-                      <ListItemText
-                        primary="Resolved"
-                        secondary={
-                          run.resolved ? (
-                            <DateDistance
-                              from={run.resolved}
-                              offset={run.started}
-                            />
-                          ) : (
-                            <em>n/a</em>
-                          )
-                        }
-                      />
-                      <ContentCopyIcon />
-                    </ListItem>
-                  </CopyToClipboard>
+                  <ListItem>
+                    <ListItemText
+                      primary="Reason Resolved"
+                      secondary={
+                        run.reasonResolved ? (
+                          <StatusLabel
+                            variant="default"
+                            state={run.reasonResolved}
+                          />
+                        ) : (
+                          <em>n/a</em>
+                        )
+                      }
+                    />
+                  </ListItem>
+                  <CopyToClipboardListItem
+                    tooltipTitle={run.scheduled}
+                    textToCopy={run.scheduled}
+                    primary="Scheduled"
+                    secondary={<DateDistance from={run.scheduled} />}
+                  />
+                  <CopyToClipboardListItem
+                    tooltipTitle={run.started}
+                    textToCopy={run.started}
+                    primary="Started"
+                    secondary={
+                      run.started ? (
+                        <DateDistance
+                          from={run.started}
+                          offset={run.scheduled}
+                        />
+                      ) : (
+                        <em>n/a</em>
+                      )
+                    }
+                  />
+                  <CopyToClipboardListItem
+                    tooltipTitle={run.resolved}
+                    textToCopy={run.resolved}
+                    primary="Resolved"
+                    secondary={
+                      run.resolved ? (
+                        <DateDistance
+                          from={run.resolved}
+                          offset={run.started}
+                        />
+                      ) : (
+                        <em>n/a</em>
+                      )
+                    }
+                  />
                   <ListItem
                     button
                     className={classes.listItemButton}
                     onClick={this.handleToggleMore}>
-                    <ListItemText primary={showMore ? 'Less...' : 'More...'} />
-                    {showMore ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                    <ListItemText
+                      disableTypography
+                      primary={
+                        <Typography
+                          variant="subtitle1"
+                          align="center"
+                          color="textSecondary">
+                          {showMore ? 'See Less' : 'See More'}
+                        </Typography>
+                      }
+                    />
                   </ListItem>
                 </List>
                 <Collapse in={showMore} timeout="auto">
@@ -405,18 +435,11 @@ export default class TaskRunsCard extends Component {
                     <ListItem>
                       <ListItemText
                         primary="Reason Created"
-                        secondary={<StatusLabel state={run.reasonCreated} />}
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText
-                        primary="Reason Resolved"
                         secondary={
-                          run.reasonResolved ? (
-                            <StatusLabel state={run.reasonResolved} />
-                          ) : (
-                            <em>n/a</em>
-                          )
+                          <StatusLabel
+                            variant="default"
+                            state={run.reasonCreated}
+                          />
                         }
                       />
                     </ListItem>
@@ -426,35 +449,31 @@ export default class TaskRunsCard extends Component {
                         secondary={run.workerGroup || <em>n/a</em>}
                       />
                     </ListItem>
-                    <ListItem
-                      title="View Worker"
-                      button
-                      className={classes.listItemButton}
-                      component={Link}
-                      to={`/provisioners/${provisionerId}/worker-types/${workerType}/workers/${run.workerId}`}>
-                      <ListItemText
-                        primary="Worker ID"
-                        secondary={run.workerId}
-                      />
-                      <LinkIcon />
-                    </ListItem>
-                    <CopyToClipboard
-                      title={`${run.takenUntil} (Copy)`}
-                      text={run.takenUntil}>
-                      <ListItem button className={classes.listItemButton}>
+                    <Link
+                      to={`/provisioners/${provisionerId}/worker-types/${workerType}/workers/${run.workerGroup}/${run.workerId}`}>
+                      <ListItem
+                        title="View Worker"
+                        button
+                        className={classes.listItemButton}>
                         <ListItemText
-                          primary="Taken Until"
-                          secondary={
-                            run.takenUntil ? (
-                              <DateDistance from={run.takenUntil} />
-                            ) : (
-                              <em>n/a</em>
-                            )
-                          }
+                          primary="Worker ID"
+                          secondary={run.workerId}
                         />
-                        <ContentCopyIcon />
+                        <LinkIcon />
                       </ListItem>
-                    </CopyToClipboard>
+                    </Link>
+                    <CopyToClipboardListItem
+                      tooltipTitle={run.takenUntil}
+                      textToCopy={run.takenUntil}
+                      primary="Taken Until"
+                      secondary={
+                        run.takenUntil ? (
+                          <DateDistance from={run.takenUntil} />
+                        ) : (
+                          <em>n/a</em>
+                        )
+                      }
+                    />
                   </List>
                 </Collapse>
               </Fragment>
@@ -467,7 +486,7 @@ export default class TaskRunsCard extends Component {
                 <Typography className={classes.boxVariantText} variant="h6">
                   No Runs
                 </Typography>
-                <Typography className={classes.boxVariantText}>
+                <Typography variant="body2" className={classes.boxVariantText}>
                   A run will be created when the task gets schedueled.
                 </Typography>
               </div>
@@ -478,9 +497,9 @@ export default class TaskRunsCard extends Component {
             position="static"
             steps={runs.length}
             activeStep={selectedRunId}
-            className={classes.root}
             nextButton={
               <Button
+                className={classes.nextPageArrow}
                 size="small"
                 onClick={this.handleNext}
                 disabled={run ? selectedRunId === runs.length - 1 : true}>
@@ -490,6 +509,7 @@ export default class TaskRunsCard extends Component {
             }
             backButton={
               <Button
+                className={classes.previousPageArrow}
                 size="small"
                 onClick={this.handlePrevious}
                 disabled={run ? selectedRunId === 0 : true}>

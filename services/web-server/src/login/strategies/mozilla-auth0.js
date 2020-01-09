@@ -1,5 +1,4 @@
 const assert = require('assert');
-const Debug = require('debug');
 const request = require('superagent');
 const passport = require('passport');
 const Auth0Strategy = require('passport-auth0');
@@ -10,8 +9,6 @@ const { encode, decode } = require('../../utils/codec');
 const tryCatch = require('../../utils/tryCatch');
 const login = require('../../utils/login');
 const verifyJwtAuth0 = require('../../utils/verifyJwtAuth0');
-
-const debug = Debug('strategies.mozilla-auth0');
 
 module.exports = class MozillaAuth0 {
   constructor({ name, cfg, monitor }) {
@@ -66,12 +63,30 @@ module.exports = class MozillaAuth0 {
     const userProfile = await personApi.getProfileFromUserId(userId);
     const user = new User();
 
-    if (!userProfile || !userProfile.user_id) {
+    if (!userProfile) {
+      this.monitor.debug('User profile not found', {
+        userId,
+        identityProviderId: this.identityProviderId,
+      });
+
+      return;
+    }
+
+    if (!userProfile.user_id) {
+      this.monitor.debug('Profile user_id ; rejecting', {
+        userId,
+        identityProviderId: this.identityProviderId,
+      });
+
       return;
     }
 
     if ('active' in userProfile && !userProfile.active) {
-      debug('user is not active; rejecting');
+      this.monitor.debug('User is not active; rejecting', {
+        userId: userProfile.user_id,
+        identityProviderId: this.identityProviderId,
+      });
+
       return;
     }
 
@@ -108,7 +123,10 @@ module.exports = class MozillaAuth0 {
     );
 
     if (jwtError) {
-      debug(`error validating the idToken jwt: ${jwtError}`);
+      this.monitor.debug('Error validating the idToken jwt', {
+        error: jwtError,
+      });
+
       return;
     }
 
@@ -122,27 +140,24 @@ module.exports = class MozillaAuth0 {
     // if the identity is a github or firefox-accounts identity, then we want
     // to add the username after a `|` character, to disambiguate the
     // otherwise-numeric usernames
-    if (userId.startsWith('github|')) {
-      for (let {provider, connection, user_id: github_user_id} of profile.identities) {
-        if (provider === 'github' && connection === 'github') {
-          // we expect the auth0 user_id to be `github|<githubUserId>`
-          assert(userId.endsWith(github_user_id.toString()),
-            `Auth0 user_id ${userId} not formatted as expected (expected |${github_user_id})`);
-          identity += `|${profile.nickname}`;
-          break;
-        }
+    if (userId.startsWith('github|') && profile.identities) {
+      if (profile.identities.github_id_v3 && profile.identities.github_id_v3.value) {
+        const github_user_id = profile.identities.github_id_v3.value;
+
+        assert(userId.endsWith(github_user_id.toString()),
+          `Auth0 user_id ${userId} not formatted as expected (expected |${github_user_id})`);
+
+        identity += `|${profile.nickname}`;
       }
-    } else if (userId.startsWith('oauth2|firefoxaccounts|')) {
-      for (let {provider, connection, profileData} of profile.identities) {
-        if (provider === 'oauth2' && connection === 'firefoxaccounts') {
-          // we expect the auth0 user_id to be `oauth|firefoxaccounts|<fxa_sub>`
-          // sometimes fxa_sub is on profileData, sometimes on the profile
-          const fxa_sub = profileData ? profileData.fxa_sub : profile.fxa_sub;
-          assert(userId.endsWith(fxa_sub),
+    } else if (userId.startsWith('oauth2|firefoxaccounts|') && profile.identities) {
+      if ('firefox_accounts_id' in profile.identities) {
+        const { firefox_accounts_id, firefox_accounts_primary_email } = profile.identities;
+
+        if (firefox_accounts_id) {
+          assert(userId.endsWith(firefox_accounts_id.value),
             `Auth0 user_id ${userId} not formatted as expected`);
-          const email = profileData ? profileData.email : profile.email;
+          const email = firefox_accounts_primary_email.value || profile.primary_email;
           identity += `|${email}`;
-          break;
         }
       }
     }
@@ -196,7 +211,7 @@ module.exports = class MozillaAuth0 {
           const [userErr, user] = await tryCatch(this.getUser({ userId: profile.user_id }));
 
           if (userErr) {
-            this.monitor.reportError(userErr || 'Could not get user', {
+            this.monitor.debug(userErr || 'Could not get user', {
               identityProviderId: this.identityProviderId,
               userId: profile.user_id,
             });

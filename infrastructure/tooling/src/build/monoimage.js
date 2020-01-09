@@ -30,7 +30,7 @@ const tempDir = path.join(REPO_ROOT, 'temp');
  *  All of this is done using a "hooks" approach to allow segmenting the various oddball bits of
  *  this process by theme.
  */
-const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
+const generateMonoimageTasks = ({tasks, baseDir, cmdOptions, credentials}) => {
   const sourceDir = appRootDir.get();
 
   ensureTask(tasks, {
@@ -78,7 +78,7 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
         'monoimage-image-on-registry': imageOnRegistry,
       };
 
-      if (imageOnRegistry && cmdOptions.noCache) {
+      if (imageOnRegistry && !cmdOptions.cache) {
         throw new Error(
           `Image ${tag} already exists on the registry, but --no-cache was given.`);
       }
@@ -93,9 +93,15 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
 
       utils.step({title: 'Building Docker Image'});
 
+      let command = ['docker', 'build'];
+      if (!cmdOptions.cache) {
+        command.push('--no-cache');
+      }
+      command = command.concat(['--progress', 'plain', '--tag', tag, '.']);
       await execCommand({
-        command: ['docker', 'build', '--progress', 'plain', '--tag', tag, '.'],
+        command,
         dir: sourceDir,
+        logfile: `${baseDir}/docker-build.log`,
         utils,
         env: {DOCKER_BUILDKIT: 1, ...process.env},
       });
@@ -130,7 +136,7 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
         'monoimage-devel-image-on-registry': imageOnRegistry,
       };
 
-      if (imageOnRegistry && cmdOptions.noCache) {
+      if (imageOnRegistry && !cmdOptions.cache) {
         throw new Error(
           `Image ${tag} already exists on the registry, but --no-cache was given.`);
       }
@@ -158,6 +164,7 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
         await execCommand({
           command: ['docker', 'build', '--progress', 'plain', '--tag', tag, '.'],
           dir: dockerDir,
+          logfile: `${baseDir}/docker-build-devel.log`,
           utils,
           env: {DOCKER_BUILDKIT: 1, ...process.env},
         });
@@ -190,11 +197,20 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
         return utils.skip({provides});
       }
 
+      const dockerPushOptions = {};
+      if (credentials.dockerUsername && credentials.dockerPassword) {
+        dockerPushOptions.credentials = {
+          username: credentials.dockerUsername,
+          password: credentials.dockerPassword,
+        };
+      }
+
       await dockerPush({
         logfile: `${baseDir}/docker-push.log`,
         tag,
         utils,
         baseDir,
+        ...dockerPushOptions,
       });
 
       return provides;
@@ -221,11 +237,20 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
         return utils.skip({reason: "already on registry"});
       }
 
+      const dockerPushOptions = {};
+      if (credentials.dockerUsername && credentials.dockerPassword) {
+        dockerPushOptions.credentials = {
+          username: credentials.dockerUsername,
+          password: credentials.dockerPassword,
+        };
+      }
+
       await dockerPush({
         logfile: `${baseDir}/docker-push.log`,
         tag,
         utils,
         baseDir,
+        ...dockerPushOptions,
       });
     },
   });
@@ -242,21 +267,6 @@ const generateMonoimageTasks = ({tasks, baseDir, cmdOptions}) => {
     run: async (requirements, utils) => {
       const tag = requirements[`monoimage-push`];
       const provides = {[`target-monoimage`]: tag};
-
-      if (!cmdOptions.push) {
-        return utils.skip({provides});
-      }
-
-      if (requirements[`monoimage-image-on-registry`]) {
-        return utils.skip({provides});
-      }
-
-      await dockerPush({
-        logfile: `${baseDir}/docker-push.log`,
-        tag,
-        utils,
-        baseDir,
-      });
 
       return provides;
     },

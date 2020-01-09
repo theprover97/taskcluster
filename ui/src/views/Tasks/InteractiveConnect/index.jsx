@@ -70,14 +70,17 @@ const getInteractiveStatus = ({
     ...theme.mixins.listItemButton,
   },
   divider: {
-    margin: `${theme.spacing.double}px 0`,
+    margin: `${theme.spacing(2)}px 0`,
   },
   warningPanel: {
-    marginTop: theme.spacing.double,
-    marginBottom: theme.spacing.double,
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(2),
   },
   viewTaskDetails: {
-    marginTop: theme.spacing.double,
+    marginTop: theme.spacing(2),
+  },
+  listItemLeftIcon: {
+    marginRight: theme.spacing(1),
   },
 }))
 export default class InteractiveConnect extends Component {
@@ -342,23 +345,23 @@ export default class InteractiveConnect extends Component {
               label="Notify Me on Ready"
             />
           </ListItem>
-          <ListItem
-            button
-            className={classNames(
-              classes.listItemButton,
-              classes.viewTaskDetails
-            )}
-            component={Link}
-            to={`/tasks/${taskId}`}>
-            <ListItemText primary="View task details" />
-            <LinkIcon />
-          </ListItem>
+          <Link to={`/tasks/${taskId}`}>
+            <ListItem
+              button
+              className={classNames(
+                classes.listItemButton,
+                classes.viewTaskDetails
+              )}>
+              <ListItemText primary="View task details" />
+              <LinkIcon />
+            </ListItem>
+          </Link>
         </List>
         {isSessionReady && (
           <Fragment>
             <Divider className={classes.divider} />
             <Typography variant="h5">Select a Session</Typography>
-            <Typography>
+            <Typography variant="body2">
               You have approximately <strong>5 minutes</strong> to connect,
               after that the task will shutdown when all connections are closed.
             </Typography>
@@ -368,7 +371,7 @@ export default class InteractiveConnect extends Component {
                 button
                 onClick={this.handleShellOpen}
                 className={classes.listItemButton}>
-                <ConsoleIcon />
+                <ConsoleIcon className={classes.listItemLeftIcon} />
                 <ListItemText primary="Shell" />
                 <OpenInNewIcon />
               </ListItem>
@@ -377,7 +380,7 @@ export default class InteractiveConnect extends Component {
                 onClick={this.handleDisplayOpen}
                 button
                 className={classes.listItemButton}>
-                <MonitorIcon />
+                <MonitorIcon className={classes.listItemLeftIcon} />
                 <ListItemText primary="Display" />
                 <OpenInNewIcon />
               </ListItem>

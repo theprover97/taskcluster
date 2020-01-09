@@ -1228,7 +1228,7 @@
             "name": "task-notifications",
             "next": {
               "path": "manual/using/administration",
-              "title": "Project Administration"
+              "title": "Administration"
             },
             "path": "manual/using/task-notifications",
             "prev": {
@@ -1246,7 +1246,7 @@
             "data": {
               "filename": "using/administration.mdx",
               "order": 90,
-              "title": "Project Administration"
+              "title": "Administration"
             },
             "name": "administration",
             "next": {
@@ -1392,7 +1392,7 @@
             "path": "manual/using/integration",
             "prev": {
               "path": "manual/using/administration",
-              "title": "Project Administration"
+              "title": "Administration"
             },
             "up": {
               "path": "manual/using",
@@ -1475,8 +1475,8 @@
             },
             "name": "workers",
             "next": {
-              "path": "manual/deploying/cloud-credentials",
-              "title": "GCP Credentials"
+              "path": "manual/deploying/backups",
+              "title": "Backups"
             },
             "path": "manual/deploying/workers",
             "prev": {
@@ -1493,7 +1493,29 @@
             ],
             "data": {
               "order": 1000,
-              "title": "GCP Credentials"
+              "title": "Backups"
+            },
+            "name": "backups",
+            "next": {
+              "path": "manual/deploying/cloud-credentials",
+              "title": "Cloud Credentials"
+            },
+            "path": "manual/deploying/backups",
+            "prev": {
+              "path": "manual/deploying/workers",
+              "title": "Workers"
+            },
+            "up": {
+              "path": "manual/deploying",
+              "title": "Deploying Taskcluster"
+            }
+          },
+          {
+            "children": [
+            ],
+            "data": {
+              "order": 1000,
+              "title": "Cloud Credentials"
             },
             "name": "cloud-credentials",
             "next": {
@@ -1502,8 +1524,8 @@
             },
             "path": "manual/deploying/cloud-credentials",
             "prev": {
-              "path": "manual/deploying/workers",
-              "title": "Workers"
+              "path": "manual/deploying/backups",
+              "title": "Backups"
             },
             "up": {
               "path": "manual/deploying",
@@ -1525,7 +1547,7 @@
             "path": "manual/deploying/github",
             "prev": {
               "path": "manual/deploying/cloud-credentials",
-              "title": "GCP Credentials"
+              "title": "Cloud Credentials"
             },
             "up": {
               "path": "manual/deploying",
@@ -1742,13 +1764,35 @@
         },
         "name": "schema",
         "next": {
-          "path": "reference/platform/README",
-          "title": "Taskcluster Platform"
+          "path": "reference/url-structure",
+          "title": "URL Structure"
         },
         "path": "reference/schema",
         "prev": {
           "path": "reference/guide",
           "title": "Guide to The Microservices"
+        },
+        "up": {
+          "path": "reference/README",
+          "title": "Taskcluster Reference"
+        }
+      },
+      {
+        "children": [
+        ],
+        "data": {
+          "order": 2,
+          "title": "URL Structure"
+        },
+        "name": "url-structure",
+        "next": {
+          "path": "reference/platform/README",
+          "title": "Taskcluster Platform"
+        },
+        "path": "reference/url-structure",
+        "prev": {
+          "path": "reference/schema",
+          "title": "Schema Index"
         },
         "up": {
           "path": "reference/README",
@@ -1881,8 +1925,8 @@
                 },
                 "name": "roles",
                 "next": {
-                  "path": "reference/platform/auth/guarded-services",
-                  "title": "Guarded Services"
+                  "path": "reference/platform/auth/external-services-credentials",
+                  "title": "External Service Credentials"
                 },
                 "path": "reference/platform/auth/roles",
                 "prev": {
@@ -1899,14 +1943,14 @@
                 ],
                 "data": {
                   "order": 50,
-                  "title": "Guarded Services"
+                  "title": "External Service Credentials"
                 },
-                "name": "guarded-services",
+                "name": "external-services-credentials",
                 "next": {
                   "path": "reference/platform/queue/README",
                   "title": "queue"
                 },
-                "path": "reference/platform/auth/guarded-services",
+                "path": "reference/platform/auth/external-services-credentials",
                 "prev": {
                   "path": "reference/platform/auth/roles",
                   "title": "Roles and Role Expansion"
@@ -2159,8 +2203,8 @@
             },
             "path": "reference/platform/queue/README",
             "prev": {
-              "path": "reference/platform/auth/guarded-services",
-              "title": "Guarded Services"
+              "path": "reference/platform/auth/external-services-credentials",
+              "title": "External Service Credentials"
             },
             "up": {
               "path": "reference/platform/README",
@@ -2169,7 +2213,7 @@
           }
         ],
         "data": {
-          "order": 2,
+          "order": 12,
           "title": "Taskcluster Platform"
         },
         "name": "platform",
@@ -2179,8 +2223,8 @@
         },
         "path": "reference/platform/README",
         "prev": {
-          "path": "reference/schema",
-          "title": "Schema Index"
+          "path": "reference/url-structure",
+          "title": "URL Structure"
         },
         "up": {
           "path": "reference/README",
@@ -2880,7 +2924,7 @@
           }
         ],
         "data": {
-          "order": 3,
+          "order": 13,
           "title": "Core Services"
         },
         "name": "core",
@@ -3054,7 +3098,7 @@
           }
         ],
         "data": {
-          "order": 5,
+          "order": 15,
           "title": "Integrations"
         },
         "name": "integrations",

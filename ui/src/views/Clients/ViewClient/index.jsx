@@ -1,19 +1,17 @@
 import { hot } from 'react-hot-loader';
 import React, { Component, Fragment } from 'react';
 import { graphql, withApollo } from 'react-apollo';
-import CopyToClipboard from 'react-copy-to-clipboard';
 import { parse } from 'qs';
+import memoize from 'fast-memoize';
+import { omit } from 'ramda';
 import { withStyles } from '@material-ui/core/styles';
 import { fade } from '@material-ui/core/styles/colorManipulator';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import CardContent from '@material-ui/core/CardContent';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemText from '@material-ui/core/ListItemText';
 import Collapse from '@material-ui/core/Collapse';
 import IconButton from '@material-ui/core/IconButton';
 import ClearIcon from 'mdi-react/ClearIcon';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import Spinner from '@mozilla-frontend-infra/components/Spinner';
 import Typography from '@material-ui/core/Typography';
 import { addYears } from 'date-fns';
@@ -22,6 +20,7 @@ import Snackbar from '../../../components/Snackbar';
 import Dashboard from '../../../components/Dashboard';
 import ClientForm from '../../../components/ClientForm';
 import ErrorPanel from '../../../components/ErrorPanel';
+import CopyToClipboardListItem from '../../../components/CopyToClipboardListItem';
 import updateClientQuery from './updateClient.graphql';
 import createClientQuery from './createClient.graphql';
 import deleteClientQuery from './deleteClient.graphql';
@@ -69,8 +68,8 @@ import { withAuth } from '../../../utils/Auth';
     },
   },
   panelHeader: {
-    paddingTop: theme.spacing.unit,
-    paddingBottom: theme.spacing.unit,
+    paddingTop: theme.spacing(1),
+    paddingBottom: theme.spacing(1),
   },
   panelTextPrimary: {
     color: THEME.PRIMARY_TEXT_LIGHT,
@@ -80,7 +79,7 @@ import { withAuth } from '../../../utils/Auth';
   },
   panelCard: {
     background: theme.palette.warning.dark,
-    marginBottom: theme.spacing.unit,
+    marginBottom: theme.spacing(1),
   },
   clearIcon: {
     fill: THEME.PRIMARY_TEXT_LIGHT,
@@ -101,6 +100,14 @@ export default class ViewClient extends Component {
       open: false,
     },
   };
+
+  getClientFormKey = memoize(initialClient => JSON.stringify(initialClient), {
+    serializer: initialClient => {
+      // expires changes on every render so it's best to keep
+      // it out of the caching key
+      return JSON.stringify(omit(['expires'], initialClient));
+    },
+  });
 
   handleDeleteClient = async clientId => {
     this.setState({ dialogError: null, loading: true });
@@ -229,7 +236,7 @@ export default class ViewClient extends Component {
       }
 
       if (isNewClient) {
-        this.props.history.push({
+        this.props.history.replace({
           pathname: `/auth/clients/${encodeURIComponent(clientId)}`,
           state: { accessToken: result.data.createClient.accessToken },
         });
@@ -299,6 +306,8 @@ export default class ViewClient extends Component {
       disabled: false,
     };
     const isCliLogin = Boolean(query.callback_url);
+    const isClientDisabled =
+      clientData && clientData.client && clientData.client.disabled;
 
     // CLI login
     if (
@@ -340,19 +349,18 @@ export default class ViewClient extends Component {
               title="You won't be able to see this again"
             />
             <CardContent className={classes.listItemButton}>
-              <CopyToClipboard text={accessToken}>
-                <ListItem button>
-                  <ListItemText
-                    classes={{
-                      primary: classes.panelTextPrimary,
-                      secondary: classes.panelTextSecondary,
-                    }}
-                    primary="Access Token"
-                    secondary={accessToken}
-                  />
-                  <ContentCopyIcon />
-                </ListItem>
-              </CopyToClipboard>
+              <CopyToClipboardListItem
+                tooltipTitle={accessToken}
+                textToCopy={accessToken}
+                primary="AccessToken"
+                secondary={accessToken}
+                listItemTextProps={{
+                  classes: {
+                    primary: classes.panelTextPrimary,
+                    secondary: classes.panelTextSecondary,
+                  },
+                }}
+              />
             </CardContent>
           </Card>
         </Collapse>
@@ -362,7 +370,7 @@ export default class ViewClient extends Component {
               <Fragment>
                 <ErrorPanel fixed error={error} />
                 <ClientForm
-                  key={JSON.stringify(initialClient)}
+                  key={this.getClientFormKey(initialClient)}
                   loading={loading}
                   client={initialClient}
                   isNewClient
@@ -377,7 +385,9 @@ export default class ViewClient extends Component {
                 )}
                 <ErrorPanel
                   fixed
+                  warning={isClientDisabled}
                   error={
+                    (isClientDisabled && 'Disabled') ||
                     error ||
                     (clientData && clientData.error) ||
                     (currentScopesData && currentScopesData.error)

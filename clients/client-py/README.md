@@ -308,6 +308,158 @@ taskcluster.fromNow("1 year", dateObj=dateObject1);
 # datetime.datetime(2018, 1, 21, 17, 59, 0, 328934)
 ```
 
+## Library helpers to easily integrate Taskcluster in your project
+
+The Python Taskcluster client has a module `taskcluster.helper` with utilities which allows you to easily share authentication options across multiple services in your project.
+
+Generally a project using this library will face different use cases and authentication options:
+
+* No authentication for a new contributor without Taskcluster access,
+* Specific client credentials through environment variables on a developer's computer,
+* Taskcluster Proxy when running inside a task.
+
+### Shared authentication
+
+The class `taskcluster.helper.TaskclusterConfig` is made to be instantiated once in your project, usually in a top level module. That singleton is then accessed by different parts of your projects, whenever a Taskcluster service is needed.
+
+Here is a sample usage:
+
+1. in `project/__init__.py`, no call to Taskcluster is made at that point:
+
+```python
+from taskcluster.helper import Taskcluster config
+
+tc = TaskclusterConfig('https://community-tc.services.mozilla.com')
+```
+
+2. in `project/boot.py`, we authenticate on Taskcuster with provided credentials, or environment variables, or taskcluster proxy (in that order):
+
+```python
+from project import tc
+
+tc.auth(client_id='XXX', access_token='YYY')
+```
+
+3. at that point, you can load any service using the authenticated wrapper from anywhere in your code:
+
+```python
+from project import tc
+
+# Synchronous service class
+queue = tc.get_service('queue')
+
+# Asynchronous service class
+hooks = tc.get_service('hooks', use_async=True)
+
+# You can then use these classes as documented below:
+queue.ping()
+await hooks.ping()
+```
+
+Supported environment variables are:
+- `TASKCLUSTER_ROOT_URL` to specify your Taskcluster instance base url. You can either use that variable or instanciate `TaskclusterConfig` with the base url.
+- `TASKCLUSTER_CLIENT_ID` & `TASKCLUSTER_ACCESS_TOKEN` to specify your client credentials instead of providing them to `TaskclusterConfig.auth`
+- `TASKCLUSTER_PROXY_URL` to specify the proxy address used to reach Taskcluster in a task. It defaults to `http://taskcluster` when not specified.
+
+For more details on Taskcluster environment variables, [here is the documentation](https://docs.taskcluster.net/docs/manual/design/env-vars).
+
+### Loading secrets across multiple authentications
+
+Another available utility is `taskcluster.helper.load_secrets` which allows you to retrieve a secret using an authenticated `taskcluster.Secrets` instance (using `TaskclusterConfig.get_service` or the synchronous class directly). 
+
+This utility loads a secret, but allows you to:
+1. share a secret across multiple projects, by using key prefixes inside the secret,
+2. check that some required keys are present in the secret,
+3. provide some default values,
+4. provide a local secret source instead of using the Taskcluster service (useful for local development or sharing _secrets_ with contributors)
+
+Let's say you have a secret on a Taskcluster instance named `project/foo/prod-config`, which is needed by a backend and some tasks. Here is its content:
+
+```yaml
+---
+common:
+  environment: production
+  remote_log: https://log.xx.com/payload
+
+backend:
+  bugzilla_token: XXXX
+
+task:
+  backend_url: https://backend.foo.mozilla.com
+```
+
+In your backend, you would do:
+
+```python
+from taskcluster import Secrets
+from taskcluster.helper import load_secrets
+
+prod_config = load_secrets(
+  Secrets({...}),
+  'project/foo/prod-config',
+
+  # We only need the common & backend parts
+  prefixes=['common', 'backend'],
+
+  # We absolutely need a bugzilla token to run
+  required=['bugzilla_token'],
+
+  # Let's provide some default value for the environment
+  existing={
+    'environment': 'dev',
+  }
+)
+# prod_config == {
+#   "environment": "production"
+#   "remote_log": "https://log.xx.com/payload",
+#   "bugzilla_token": "XXXX",
+# }
+```
+
+In your task, you could do the following using `TaskclusterConfig` mentionned above (the class has a shortcut to use an authenticated `Secrets` service automatically):
+
+```python
+from project import tc
+
+prod_config = tc.load_secrets(
+  'project/foo/prod-config',
+
+  # We only need the common & bot parts
+  prefixes=['common', 'bot'],
+
+  # Let's provide some default value for the environment and backend_url
+  existing={
+    'environment': 'dev',
+    'backend_url': 'http://localhost:8000',
+  }
+)
+# prod_config == {
+#   "environment": "production"
+#   "remote_log": "https://log.xx.com/payload",
+#   "backend_url": "https://backend.foo.mozilla.com",
+# }
+```
+
+To provide local secrets value, you first need to load these values as a dictionary (usually by reading a local file in your format of choice : YAML, JSON, ...) and providing the dictionary to `load_secrets` by using the `local_secrets` parameter:
+
+```python
+import os
+import yaml
+
+from taskcluster import Secrets
+from taskcluster.helper import load_secrets
+
+local_path = 'path/to/file.yml'
+
+prod_config = load_secrets(
+  Secrets({...}),
+  'project/foo/prod-config',
+
+  # We support an optional local file to provide some configuration without reaching Taskcluster
+  local_secrets=yaml.safe_load(open(local_path)) if os.path.exists(local_path) else None,
+)
+```
+
 ## Methods contained in the client library
 
 <!-- START OF GENERATED DOCS -->
@@ -725,37 +877,8 @@ which type of credentials are returned. Please note that the `level`
 parameter is required in the scope guarding access.  The bucket name must
 not contain `.`, as recommended by Amazon.
 
-This method can only allow access to a whitelisted set of buckets.  To add
-a bucket to that whitelist, contact the Taskcluster team, who will add it to
-the appropriate IAM policy.  If the bucket is in a different AWS account, you
-will also need to add a bucket policy allowing access from the Taskcluster
-account.  That policy should look like this:
-
-```js
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "allow-taskcluster-auth-to-delegate-access",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::692406183521:root"
-      },
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:GetBucketLocation"
-      ],
-      "Resource": [
-        "arn:aws:s3:::<bucket>",
-        "arn:aws:s3:::<bucket>/*"
-      ]
-    }
-  ]
-}
-```
+This method can only allow access to a whitelisted set of buckets, as configured
+in the Taskcluster deployment
 
 The credentials are set to expire after an hour, but this behavior is
 subject to change. Hence, you should always read the `expires` property
@@ -969,10 +1092,9 @@ await asyncAuth.websocktunnelToken(wstAudience='value', wstClient='value') # -> 
 #### Get Temporary GCP Credentials
 Get temporary GCP credentials for the given serviceAccount in the given project.
 
-Only preconfigured projects are allowed.  Any serviceAccount in that project may
-be used.
+Only preconfigured projects and serviceAccounts are allowed, as defined in the
+deployment of the Taskcluster services.
 
-The call adds the necessary policy if the serviceAccount doesn't have it.
 The credentials are set to expire after an hour, but this behavior is
 subject to change. Hence, you should always read the `expires` property
 from the response, if you intend to maintain active credentials in your

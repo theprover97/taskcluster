@@ -1,6 +1,6 @@
 {
   "name": "taskcluster-client",
-  "version": "22.1.1",
+  "version": "24.1.9",
   "author": "Jonas Finnemann Jensen <jopsen@gmail.com>",
   "description": "Client for interfacing taskcluster components",
   "license": "MPL-2.0",
@@ -10,7 +10,7 @@
     "package-test": "sh package_test.sh"
   },
   "dependencies": {
-    "debug": "^4.0.0",
+    "debug": "^4.1.1",
     "@hapi/hawk": "^7.1.2",
     "lodash": "^4.17.4",
     "slugid": "^2.0.0",
@@ -23,7 +23,7 @@
     "nock": "^11.0.0"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=v8.17.0"
   },
   "files": [
     "src"

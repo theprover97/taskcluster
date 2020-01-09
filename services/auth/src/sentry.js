@@ -7,8 +7,8 @@ builder.declare({
   name: 'sentryDSN',
   input: undefined,
   output: 'sentry-dsn-response.yml',
-  stability: 'deprecated',
-  category: 'Auth Service',
+  stability: 'stable',
+  category: 'Sentry Credentials',
   scopes: 'auth:sentry:<project>',
   title: 'Get DSN for Sentry Project',
   description: [
@@ -27,6 +27,13 @@ builder.declare({
   await req.authorize({project});
 
   let key = await this.sentryManager.projectDSN(project);
+
+  if (!key) {
+    return res.reportError(
+      'ResourceNotFound',
+      'Sentry credentials not found',
+      {});
+  }
 
   return res.reply({
     project,

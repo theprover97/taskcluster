@@ -18,16 +18,15 @@ import scopesQuery from '../scopes.graphql';
 @graphql(scopesQuery)
 @withStyles(theme => ({
   icon: {
-    marginRight: theme.spacing.unit,
+    marginRight: theme.spacing(1),
   },
   tabs: {
-    marginBottom: theme.spacing.triple,
+    marginBottom: theme.spacing(3),
   },
 }))
 export default class ViewScope extends Component {
   state = {
     searchTerm: '',
-    directEntitySearch: false,
     currentTabIndex: 0,
   };
 
@@ -79,23 +78,21 @@ export default class ViewScope extends Component {
     } = this.props;
     const { searchTerm, currentTabIndex } = this.state;
     const selectedScope = decodeURIComponent(params.selectedScope);
-    const searchProperty = this.state.directEntitySearch
-      ? 'scopes'
-      : 'expandedScopes';
 
     return (
       <Dashboard
-        title={selectedScope}
+        title={`Scope ${selectedScope}`}
+        disableTitleFormatting
         search={
           <Search
             onSubmit={this.handleSearchSubmit}
-            placeholder="Result contains"
+            placeholder="Role/Client contains"
           />
         }>
         <Fragment>
           <Tabs
             className={classes.tabs}
-            fullWidth
+            variant="fullWidth"
             value={currentTabIndex}
             onChange={this.handleTabChange}>
             <Tab label="Roles" />
@@ -108,7 +105,6 @@ export default class ViewScope extends Component {
               roles={roles}
               searchTerm={searchTerm}
               selectedScope={selectedScope}
-              searchProperty={searchProperty}
             />
           )}
           {clients && currentTabIndex === 1 && (
@@ -117,7 +113,6 @@ export default class ViewScope extends Component {
               onPageChange={this.handleClientsPageChange}
               searchTerm={searchTerm}
               selectedScope={selectedScope}
-              searchProperty={searchProperty}
             />
           )}
         </Fragment>

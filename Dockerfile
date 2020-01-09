@@ -1,15 +1,17 @@
 ##
 # Build /app
 
-FROM node:10.16.3 as build
+FROM node:12.14.0 as build
 
 RUN mkdir -p /base/cache
 ENV YARN_CACHE_FOLDER=/base/cache
 
 RUN mkdir -p /base/yarn
-COPY /yarn.lock /package.json /base/yarn/
+COPY /yarn.lock /.yarnrc /package.json /base/yarn/
+COPY /.yarn /base/yarn/.yarn/
 RUN mkdir -p /base/yarn-ui
-COPY /ui/yarn.lock /ui/package.json /base/yarn-ui/
+COPY /ui/yarn.lock /.yarnrc /ui/package.json /base/yarn-ui/
+COPY /.yarn /base/yarn-ui/.yarn/
 
 WORKDIR /base/yarn
 RUN yarn install --production --frozen-lockfile
@@ -53,7 +55,7 @@ RUN rm -rf ui/node_modules ui/src
 ##
 # build the final image
 
-FROM node:10.16.3-alpine as image
+FROM node:12.14.0-alpine as image
 RUN apk update && apk add nginx && mkdir /run/nginx && apk add bash
 COPY --from=build /base/app /app
 ENV HOME=/app

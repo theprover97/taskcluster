@@ -10,6 +10,7 @@ import amber from '@material-ui/core/colors/amber';
 import blue from '@material-ui/core/colors/blue';
 import grey from '@material-ui/core/colors/grey';
 import green from '@material-ui/core/colors/green';
+import purple from '@material-ui/core/colors/purple';
 import Typography from '@material-ui/core/Typography';
 import Grid from '@material-ui/core/Grid';
 import ButtonBase from '@material-ui/core/ButtonBase';
@@ -100,16 +101,16 @@ const getStatusCount = memoize(
     display: 'flex',
     flexGrow: 1,
     flexBasis: 0,
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`,
+    padding: `${theme.spacing(1)}px ${theme.spacing(1)}px`,
     justifyContent: 'space-around',
     cursor: 'pointer',
-    margin: theme.spacing.unit,
+    margin: theme.spacing(1),
     '& > div': {
       display: 'flex',
       flexDirection: 'column',
       width: '100%',
     },
-    borderRadius: theme.spacing.unit / 4,
+    borderRadius: theme.spacing(0.25),
   },
   statusButtonTypography: {
     color: THEME.PRIMARY_TEXT_DARK,
@@ -139,9 +140,9 @@ const getStatusCount = memoize(
     },
   },
   pendingButton: {
-    backgroundColor: grey[600],
+    backgroundColor: purple[400],
     '&:hover': {
-      backgroundColor: grey[800],
+      backgroundColor: purple[600],
     },
   },
   exceptionButton: {
@@ -291,7 +292,7 @@ export default class TaskGroupProgress extends Component {
     const taskGroupState = this.getTaskGroupState();
 
     return (
-      <Grid container spacing={16}>
+      <Grid container spacing={2}>
         <Helmet state={taskGroupState} />
         {Object.keys(TASK_STATE).map(status => {
           const Icon = this.getStatusIcon(status);

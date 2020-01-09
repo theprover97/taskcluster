@@ -9,6 +9,7 @@ const SessionStorage = require('../src/data/SessionStorage');
 const GithubClient = require('../src/login/clients/GithubClient');
 const libUrls = require('taskcluster-lib-urls');
 const request = require('superagent');
+const merge = require('deepmerge');
 
 exports.load = stickyLoader(load);
 
@@ -44,6 +45,23 @@ exports.withFakeAuth = (mock, skipping) => {
     }
 
     exports.load.inject('auth', stubbedAuth());
+  });
+};
+
+exports.withClients = (mock, skipping) => {
+  suiteSetup('withClients', async function() {
+    if (skipping()) {
+      return;
+    }
+
+    const clients = stubbedClients();
+
+    exports.load.inject('clients', clients);
+    exports.clients = clients;
+  });
+
+  suiteTeardown(function () {
+    exports.load.remove('clients');
   });
 };
 
@@ -118,6 +136,33 @@ exports.githubFixtures = {
   },
 };
 
+exports.makeTaskDefinition = (options = {}) => merge({
+  provisionerId: "no-provisioner-extended-extended",
+  workerType: "test-worker-extended-extended",
+  schedulerId: "my-scheduler-extended-extended",
+  taskGroupId: "dSlITZ4yQgmvxxAi4A8fHQ",
+  dependencies: [],
+  requires: 'ALL_COMPLETED',
+  routes: [],
+  priority: 'LOWEST',
+  retries: 5,
+  created: taskcluster.fromNowJSON(),
+  deadline: taskcluster.fromNowJSON('3 days'),
+  expires: taskcluster.fromNowJSON('3 days'),
+  scopes: [],
+  payload: {},
+  metadata: {
+    name: "Testing task",
+    description: "Task created during tests",
+    owner: "haali@mozilla.com",
+    source: "https://github.com/taskcluster/taskcluster",
+  },
+  tags: {
+    purpose: "taskcluster-testing",
+  },
+  extra: {},
+}, options);
+
 exports.withGithubClient = () => {
   function githubClient() {
     let currentUsername = null;
@@ -177,10 +222,6 @@ exports.withGithubClient = () => {
 const stubbedAuth = () => {
   const auth = new taskcluster.Auth({
     rootUrl: exports.rootUrl,
-    credentials: {
-      clientId: 'index-server',
-      accessToken: 'none',
-    },
     fake: {
       createClient: async (clientId, input) => {
         return Promise.resolve({
@@ -199,4 +240,125 @@ const stubbedAuth = () => {
   });
 
   return auth;
+};
+
+const stubbedClients = () => {
+  const tasks = new Map();
+  const roles = new Map();
+  const options = {
+    rootUrl: exports.rootUrl,
+  };
+
+  teardown(() => {
+    tasks.clear();
+    roles.clear();
+  });
+
+  return () => ({
+    github: new taskcluster.Github(options),
+    hooks: new taskcluster.Hooks(options),
+    index: new taskcluster.Index(options),
+    purgeCache: new taskcluster.PurgeCache(options),
+    secrets: new taskcluster.Secrets(options),
+    queueEvents: new taskcluster.QueueEvents(options),
+    notify: new taskcluster.Notify(options),
+    workerManager: new taskcluster.WorkerManager(options),
+    auth: new taskcluster.Auth({
+      ...options,
+      fake: {
+        listRoles: async () => {
+          let allRoles = [];
+          for(let roleId of roles.keys()){
+            allRoles.push(roles.get(roleId));
+          }
+          return Promise.resolve(allRoles);
+        },
+        listRoleIds: async () => {
+          let roleIds = Array.from(roles.keys());
+          return Promise.resolve({roleIds});
+        },
+        role: async (roleId) => {
+          const role = roles.get(roleId);
+
+          return role
+            ? Promise.resolve(role)
+            : Promise.reject(new Error('role not found'));
+        },
+        createRole: async (roleId, role) => {
+          const newRole = {
+            roleId: roleId,
+            scopes: role.scopes,
+            description: role.description,
+            created: taskcluster.fromNowJSON(),
+            lastModified: taskcluster.fromNowJSON(),
+            expandedScopes: [],
+          };
+          roles.set(roleId, newRole);
+          return Promise.resolve(newRole);
+        },
+        updateRole: async (roleId, role) => {
+          if(!roles.has(roleId)){
+            return Promise.reject('role not found');
+          }
+          const updatedRole = {
+            roleId: roleId,
+            scopes: role.scopes,
+            description: role.description,
+            created: taskcluster.fromNowJSON(),
+            lastModified: taskcluster.fromNowJSON(),
+            expandedScopes: [],
+            ...role,
+          };
+          roles.set(roleId, updatedRole);
+          return Promise.resolve(updatedRole);
+        },
+        deleteRole: async (roleId) => {
+          if(!roles.has(roleId)){
+            return Promise.reject('role not found');
+          }
+          roles.delete(roleId);
+          return Promise.resolve(roleId);
+        },
+      },
+    }),
+    queue: new taskcluster.Queue({
+      ...options,
+      fake: {
+        task: async (taskId) => {
+          const taskDef = tasks.get(taskId);
+
+          return taskDef
+            ? Promise.resolve({
+              taskId,
+              ...taskDef,
+            })
+            : Promise.reject(new Error('task not found'));
+        },
+        createTask: async (taskId, taskDef) => {
+          tasks.set(taskId, taskDef);
+          const taskRun = {
+            taskId,
+            runId: 0,
+            state: 'running',
+            reasonCreated: 'scheduled',
+            scheduled: taskcluster.fromNowJSON(),
+          };
+          const taskStatus = {
+            taskId,
+            provisionerId: taskDef.provisionerId,
+            workerType: taskDef.workerType,
+            schedulerId: taskDef.schedulerId,
+            taskGroupId: taskDef.taskGroupId,
+            deadline: taskDef.deadline,
+            expires: taskDef.expires,
+            retriesLeft: 1,
+            state: 'running',
+            runs: taskRun,
+          };
+
+          return Promise.resolve(taskStatus);
+        },
+      },
+    }),
+  });
 };

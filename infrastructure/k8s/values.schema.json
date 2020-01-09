@@ -12,14 +12,16 @@
         "audit_log": {
           "type": "string"
         },
-        "aws_access_key_id": {
-          "type": "string"
-        },
-        "aws_region": {
-          "type": "string"
-        },
-        "aws_secret_access_key": {
-          "type": "string"
+        "aws_credentials_allowed_buckets": {
+          "oneOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "array"
+            }
+          ]
         },
         "azure_account_key": {
           "type": "string"
@@ -146,9 +148,6 @@
               "type": "array"
             }
           ]
-        },
-        "test_bucket": {
-          "type": "string"
         },
         "websocktunnel_secret": {
           "type": "string"
@@ -664,9 +663,6 @@
         "irc_port": {
           "type": "string"
         },
-        "irc_pulse_queue_name": {
-          "type": "string"
-        },
         "irc_real_name": {
           "type": "string"
         },
@@ -878,9 +874,6 @@
         "azure_report_threshold": {
           "type": "number"
         },
-        "blob_artifact_region": {
-          "type": "string"
-        },
         "debug": {
           "title": "node debug env var",
           "type": "string"
@@ -889,9 +882,6 @@
           "type": "string"
         },
         "private_artifact_bucket": {
-          "type": "string"
-        },
-        "private_blob_artifact_bucket": {
           "type": "string"
         },
         "procs": {
@@ -1157,9 +1147,6 @@
             }
           ]
         },
-        "public_blob_artifact_bucket": {
-          "type": "string"
-        },
         "pulse_password": {
           "type": "string"
         },
@@ -1181,9 +1168,6 @@
       },
       "required": [
         "procs",
-        "public_blob_artifact_bucket",
-        "private_blob_artifact_bucket",
-        "blob_artifact_region",
         "public_artifact_bucket",
         "private_artifact_bucket",
         "taskcluster_client_id",
@@ -1693,6 +1677,17 @@
             }
           ]
         },
+        "provisioner_iterate_config": {
+          "oneOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
         "pulse_password": {
           "type": "string"
         },
@@ -1704,6 +1699,17 @@
         },
         "taskcluster_client_id": {
           "type": "string"
+        },
+        "worker_scanner_iterate_config": {
+          "oneOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "array"
+            }
+          ]
         }
       },
       "required": [

@@ -11,7 +11,7 @@ builder.declare({
   route: '/task/:taskId/runs/:runId/artifacts/:name(*)',
   name: 'createArtifact',
   stability: APIBuilder.stability.stable,
-  category: 'Queue Service',
+  category: 'Artifacts',
   scopes: {AnyOf: [
     'queue:create-artifact:<taskId>/<runId>',
     {AllOf: [
@@ -411,7 +411,7 @@ builder.declare({
   route: '/task/:taskId/runs/:runId/artifacts/:name(*)',
   name: 'getArtifact',
   stability: APIBuilder.stability.stable,
-  category: 'Queue Service',
+  category: 'Artifacts',
   scopes: {
     if: 'private',
     then: {
@@ -515,7 +515,7 @@ builder.declare({
   route: '/task/:taskId/artifacts/:name(*)',
   name: 'getLatestArtifact',
   stability: APIBuilder.stability.stable,
-  category: 'Queue Service',
+  category: 'Artifacts',
   scopes: {
     if: 'private',
     then: {
@@ -578,8 +578,8 @@ builder.declare({
     limit: /^[0-9]+$/,
   },
   name: 'listArtifacts',
-  stability: APIBuilder.stability.experimental,
-  category: 'Queue Service',
+  stability: APIBuilder.stability.stable,
+  category: 'Artifacts',
   output: 'list-artifacts-response.json#',
   title: 'Get Artifacts from Run',
   description: [
@@ -598,7 +598,6 @@ builder.declare({
   let runId = parseInt(req.params.runId, 10);
   let continuation = req.query.continuationToken || null;
   let limit = parseInt(req.query.limit || 1000, 10);
-  // TODO: Add support querying using prefix
 
   let [task, artifacts] = await Promise.all([
     this.Task.load({taskId}, true),
@@ -646,9 +645,9 @@ builder.declare({
     continuationToken: Entity.continuationTokenPattern,
     limit: /^[0-9]+$/,
   },
-  stability: APIBuilder.stability.experimental,
+  stability: APIBuilder.stability.stable,
   output: 'list-artifacts-response.json#',
-  category: 'Queue Service',
+  category: 'Artifacts',
   title: 'Get Artifacts from Latest Run',
   description: [
     'Returns a list of artifacts and associated meta-data for the latest run',
@@ -666,7 +665,6 @@ builder.declare({
   let taskId = req.params.taskId;
   let continuation = req.query.continuationToken || null;
   let limit = parseInt(req.query.limit || 1000, 10);
-  // TODO: Add support querying using prefix
 
   // Load task status structure from table
   let task = await this.Task.load({taskId}, true);

@@ -28,6 +28,8 @@ import quarantineWorkerQuery from './quarantineWorker.graphql';
 @graphql(workerQuery, {
   skip: props => !props.match.params.provisionerId,
   options: ({ match: { params } }) => ({
+    fetchPolicy: 'network-only',
+    errorPolicy: 'all',
     variables: params,
   }),
 })
@@ -133,6 +135,24 @@ export default class ViewWorker extends Component {
     this.setState({ actionLoading: false });
   };
 
+  getError(error) {
+    if (!error) {
+      return null;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    return error.graphQLErrors.find(error => {
+      return !(
+        error.statusCode === 404 &&
+        (error.path.includes('recentTasks') ||
+          error.path.includes('latestTasks'))
+      );
+    });
+  }
+
   render() {
     const {
       classes,
@@ -146,38 +166,36 @@ export default class ViewWorker extends Component {
       quarantineUntilInput,
       dialogError,
     } = this.state;
+    const graphqlError = this.getError(error);
 
     return (
       <Dashboard title="Worker">
         <Fragment>
           {loading && <Spinner loading />}
-          <ErrorPanel fixed error={error} />
+          <ErrorPanel fixed error={graphqlError} />
           {worker && (
             <Fragment>
               <Breadcrumbs>
-                <Typography
-                  className={classes.link}
-                  component={Link}
-                  to="/provisioners">
-                  Provisioners
-                </Typography>
-                <Typography
-                  className={classes.link}
-                  component={Link}
-                  to={`/provisioners/${params.provisionerId}`}>
-                  {params.provisionerId}
-                </Typography>
-                <Typography
-                  className={classes.link}
-                  component={Link}
+                <Link to="/provisioners">
+                  <Typography variant="body2" className={classes.link}>
+                    Workers
+                  </Typography>
+                </Link>
+                <Link to={`/provisioners/${params.provisionerId}`}>
+                  <Typography variant="body2" className={classes.link}>
+                    {params.provisionerId}
+                  </Typography>
+                </Link>
+                <Link
                   to={`/provisioners/${params.provisionerId}/worker-types/${params.workerType}`}>
-                  {params.workerType}
-                </Typography>
-
-                <Typography color="textSecondary">
+                  <Typography variant="body2" className={classes.link}>
+                    {params.workerType}
+                  </Typography>
+                </Link>
+                <Typography variant="body2" color="textSecondary">
                   {`${params.workerGroup}`}
                 </Typography>
-                <Typography color="textSecondary">
+                <Typography variant="body2" color="textSecondary">
                   {`${params.workerId}`}
                 </Typography>
               </Breadcrumbs>
@@ -203,7 +221,7 @@ export default class ViewWorker extends Component {
                     worker.quarantineUntil ? 'Update Quarantine' : 'Quarantine'
                   }
                   onClick={this.handleDialogOpen}
-                  ButtonProps={{
+                  FabProps={{
                     disabled: actionLoading,
                   }}
                 />
@@ -214,7 +232,7 @@ export default class ViewWorker extends Component {
                     key={action.title}
                     icon={<HammerIcon />}
                     onClick={() => this.handleActionDialogOpen(action)}
-                    ButtonProps={{
+                    FabProps={{
                       disabled: actionLoading,
                     }}
                     tooltipTitle={action.title}

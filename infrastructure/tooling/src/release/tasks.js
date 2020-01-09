@@ -1,19 +1,14 @@
 const semver = require('semver');
-const Octokit = require('@octokit/rest');
-const fs = require('fs');
 const {ChangeLog} = require('../changelog');
-const util = require('util');
-const path = require('path');
-const rimraf = util.promisify(require('rimraf'));
-const mkdirp = util.promisify(require('mkdirp'));
 const {
   ensureTask,
   gitLsFiles,
+  gitRemoteRev,
+  gitDescribe,
   gitIsDirty,
   gitCommit,
   gitTag,
   gitPush,
-  execCommand,
   readRepoJSON,
   readRepoFile,
   writeRepoFile,
@@ -24,11 +19,9 @@ const {
   REPO_ROOT,
 } = require('../utils');
 
-const readFile = util.promisify(fs.readFile);
+const UPSTREAM_REMOTE = 'git@github.com:taskcluster/taskcluster';
 
-module.exports = ({tasks, cmdOptions, baseDir}) => {
-  const artifactsDir = path.join(baseDir, 'release-artifacts');
-
+module.exports = ({tasks, cmdOptions, credentials}) => {
   ensureTask(tasks, {
     title: 'Get Changelog',
     requires: [
@@ -84,10 +77,35 @@ module.exports = ({tasks, cmdOptions, baseDir}) => {
   });
 
   ensureTask(tasks, {
+    title: 'Check Repo is Up To Date with Upstream master',
+    requires: [],
+    provides: [
+      'repo-up-to-date',
+    ],
+    locks: ['git'],
+    run: async (requirements, utils) => {
+      const { revision: localRevision } = await gitDescribe({dir: REPO_ROOT, utils});
+      const { revision: remoteRevision } = await gitRemoteRev({
+        dir: REPO_ROOT,
+        remote: UPSTREAM_REMOTE,
+        ref: 'master',
+        utils,
+      });
+      if (localRevision !== remoteRevision) {
+        throw new Error([
+          'The current git working copy is not up to date with the upstream repo. ' +
+          'Pull the latest changes and try again.',
+        ].join(' '));
+      }
+    },
+  });
+
+  ensureTask(tasks, {
     title: 'Update Version in Repo',
     requires: [
       'release-version',
       'repo-clean',
+      'repo-up-to-date',
     ],
     provides: [
       'version-updated',
@@ -260,72 +278,14 @@ module.exports = ({tasks, cmdOptions, baseDir}) => {
   });
 
   ensureTask(tasks, {
-    title: 'Clean release-artifacts',
-    requires: [],
-    provides: ['cleaned-release-artifacts'],
-    run: async (requirements, utils) => {
-      await rimraf(artifactsDir);
-      await mkdirp(artifactsDir);
-    },
-  });
-
-  ensureTask(tasks, {
-    title: 'Build client-shell artifacts',
-    requires: [
-      'cleaned-release-artifacts',
-      'version-updated',
-    ],
-    provides: ['client-shell-artifacts'],
-    run: async (requirements, utils) => {
-      await execCommand({
-        dir: artifactsDir,
-        command: ['go', 'get', '-u', 'github.com/mitchellh/gox'],
-        utils,
-      });
-
-      const osarch = 'linux/amd64 darwin/amd64';
-      await execCommand({
-        dir: path.join(REPO_ROOT, 'clients', 'client-shell'),
-        command: [
-          'gox',
-          `-osarch=${osarch}`,
-          `-output=${artifactsDir}/taskcluster-{{.OS}}-{{.Arch}}`,
-        ],
-        utils,
-      });
-
-      const artifacts = osarch.split(' ')
-        .map(osarch => {
-          const [os, arch] = osarch.split('/');
-          return `taskcluster-${os}-${arch}`;
-        });
-
-      return {
-        'client-shell-artifacts': artifacts,
-      };
-    },
-  });
-
-  /* -- docker image build occurs here -- */
-
-  ensureTask(tasks, {
     title: 'Push Tag',
     requires: [
-      'release-version',
       'repo-tagged',
-      'target-monoimage',
-      'client-shell-artifacts',
-      'monoimage-docker-image',
     ],
     provides: [
-      'pushed-tag',
+      'target-release',
     ],
     run: async (requirements, utils) => {
-      // the build process should have used the git tag to name the docker image..
-      if (requirements['monoimage-docker-image'] !== `taskcluster/taskcluster:v${requirements['release-version']}`) {
-        throw new Error('Got unexpected docker-image name');
-      }
-
       if (!cmdOptions.push) {
         return utils.skip({});
       }
@@ -339,59 +299,7 @@ module.exports = ({tasks, cmdOptions, baseDir}) => {
       });
 
       return {
-        'pushed-tag': tags[0],
-      };
-    },
-  });
-
-  ensureTask(tasks, {
-    title: 'Create GitHub Release',
-    requires: [
-      'release-version',
-      'client-shell-artifacts',
-      'pushed-tag',
-      'changelog',
-    ],
-    provides: [
-      'github-release',
-    ],
-    run: async (requirements, utils) => {
-      if (!cmdOptions.push) {
-        return utils.skip({});
-      }
-
-      const octokit = new Octokit({auth: `token ${cmdOptions.ghToken}`});
-
-      utils.status({message: `Create Release`});
-      const release = await octokit.repos.createRelease({
-        owner: 'taskcluster',
-        repo: 'taskcluster',
-        tag_name: requirements['pushed-tag'],
-        name: requirements['pushed-tag'],
-        body: await requirements['changelog'].format(),
-        draft: false,
-        prerelease: false,
-      });
-      const {upload_url} = release.data;
-
-      const files = requirements['client-shell-artifacts']
-        .map(name => ({name, contentType: 'application/octet-stream'}));
-      for (let {name, contentType} of files) {
-        utils.status({message: `Upload Release asset ${name}`});
-        const file = await readFile(path.join(artifactsDir, name));
-        await octokit.repos.uploadReleaseAsset({
-          url: upload_url,
-          headers: {
-            'content-length': file.length,
-            'content-type': contentType,
-          },
-          name,
-          file,
-        });
-      }
-
-      return {
-        'github-release': release.data.html_url,
+        'target-release': true,
       };
     },
   });

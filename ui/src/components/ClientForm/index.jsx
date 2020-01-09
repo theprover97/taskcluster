@@ -13,17 +13,17 @@ import TextField from '@material-ui/core/TextField';
 import Switch from '@material-ui/core/Switch';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import MarkdownTextArea from '@mozilla-frontend-infra/components/MarkdownTextArea';
 import ContentSaveIcon from 'mdi-react/ContentSaveIcon';
 import CancelIcon from 'mdi-react/CancelIcon';
 import DeleteIcon from 'mdi-react/DeleteIcon';
 import LinkIcon from 'mdi-react/LinkIcon';
 import PowerIcon from 'mdi-react/PowerIcon';
 import LockResetIcon from 'mdi-react/LockResetIcon';
+import MarkdownTextArea from '../MarkdownTextArea';
+import DateDistance from '../DateDistance';
 import SpeedDial from '../SpeedDial';
 import SpeedDialAction from '../SpeedDialAction';
 import DialogAction from '../DialogAction';
-import DateDistance from '../DateDistance';
 import DatePicker from '../DatePicker';
 import Button from '../Button';
 import { client } from '../../utils/prop-types';
@@ -38,8 +38,8 @@ import { formatScope, scopeLink } from '../../utils/scopeUtils';
   },
   saveClientSpan: {
     position: 'fixed',
-    bottom: theme.spacing.double,
-    right: theme.spacing.unit * 11,
+    bottom: theme.spacing(2),
+    right: theme.spacing(11),
   },
   expandedScopesListItem: {
     paddingTop: 0,
@@ -57,15 +57,12 @@ import { formatScope, scopeLink } from '../../utils/scopeUtils';
   deleteIcon: {
     ...theme.mixins.errorIcon,
   },
-  disableIcon: {
-    ...theme.mixins.warningIcon,
-  },
-  enableIcon: {
-    ...theme.mixins.successIcon,
+  deleteTooltipLabel: {
+    backgroundColor: theme.mixins.errorIcon.backgroundColor,
   },
   clientDescriptionListItem: {
-    marginTop: theme.spacing.unit,
-    marginBottom: theme.spacing.triple,
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(3),
   },
 }))
 /** A form to view/edit/create a client */
@@ -296,7 +293,6 @@ export default class ClientForm extends Component {
                 <DatePicker
                   value={expires}
                   onChange={this.handleExpirationChange}
-                  format="yyyy/MM/dd"
                   maxDate={addYears(new Date(), 1001)}
                 />
               }
@@ -345,27 +341,24 @@ export default class ClientForm extends Component {
                   secondary={
                     <List dense>
                       {expandedScopes.map(scope => (
-                        <ListItem
-                          key={scope}
-                          button
-                          component={Link}
-                          to={scopeLink(scope)}
-                          className={classes.listItemButton}>
-                          <ListItemText
-                            disableTypography
-                            secondary={
-                              <Typography>
-                                <code
-                                  // eslint-disable-next-line react/no-danger
-                                  dangerouslySetInnerHTML={{
-                                    __html: formatScope(scope),
-                                  }}
-                                />
-                              </Typography>
-                            }
-                          />
-                          <LinkIcon />
-                        </ListItem>
+                        <Link key={scope} to={scopeLink(scope)}>
+                          <ListItem button className={classes.listItemButton}>
+                            <ListItemText
+                              disableTypography
+                              secondary={
+                                <Typography variant="body2">
+                                  <code
+                                    // eslint-disable-next-line react/no-danger
+                                    dangerouslySetInnerHTML={{
+                                      __html: formatScope(scope),
+                                    }}
+                                  />
+                                </Typography>
+                              }
+                            />
+                            <LinkIcon />
+                          </ListItem>
+                        </Link>
                       ))}
                     </List>
                   }
@@ -406,9 +399,12 @@ export default class ClientForm extends Component {
                 tooltipOpen
                 icon={<DeleteIcon />}
                 onClick={onDialogActionOpen}
-                className={classes.deleteIcon}
+                classes={{
+                  icon: classes.deleteIcon,
+                  staticTooltipLabel: classes.deleteTooltipLabel,
+                }}
                 tooltipTitle="Delete"
-                ButtonProps={{ disabled: loading }}
+                FabProps={{ disabled: loading }}
               />
               <SpeedDialAction
                 requiresAuth
@@ -418,8 +414,7 @@ export default class ClientForm extends Component {
                   disabled ? this.handleEnableClient : this.handleDisableClient
                 }
                 tooltipTitle={disabled ? 'Enable' : 'Disable'}
-                className={disabled ? classes.enableIcon : classes.disableIcon}
-                ButtonProps={{
+                FabProps={{
                   disabled: loading,
                 }}
               />
@@ -429,7 +424,7 @@ export default class ClientForm extends Component {
                 icon={<LockResetIcon />}
                 onClick={this.handleResetAccessToken}
                 tooltipTitle="Reset Access Token"
-                ButtonProps={{
+                FabProps={{
                   disabled: loading,
                 }}
               />
@@ -446,7 +441,9 @@ export default class ClientForm extends Component {
             error={dialogError}
             title="Delete Client?"
             body={
-              <Typography>This will delete the {clientId} client.</Typography>
+              <Typography variant="body2">
+                This will delete the {clientId} client.
+              </Typography>
             }
             confirmText="Delete Client"
           />

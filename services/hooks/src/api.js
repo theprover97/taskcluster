@@ -28,7 +28,7 @@ builder.declare({
   route: '/hooks',
   name: 'listHookGroups',
   idempotent: true,
-  category: 'Hooks Service',
+  category: 'Hooks',
   output: 'list-hook-groups-response.yml',
   title: 'List hook groups',
   stability: 'stable',
@@ -51,7 +51,7 @@ builder.declare({
   route: '/hooks/:hookGroupId',
   name: 'listHooks',
   idempotent: true,
-  category: 'Hooks Service',
+  category: 'Hooks',
   output: 'list-hooks-response.yml',
   title: 'List hooks in a given group',
   stability: 'stable',
@@ -82,7 +82,7 @@ builder.declare({
   idempotent: true,
   output: 'hook-definition.yml',
   title: 'Get hook definition',
-  category: 'Hooks Service',
+  category: 'Hooks',
   stability: 'stable',
   description: [
     'This endpoint will return the hook definition for the given `hookGroupId`',
@@ -112,7 +112,7 @@ builder.declare({
   output: 'hook-status.yml',
   title: 'Get hook status',
   stability: 'deprecated',
-  category: 'Hooks Service',
+  category: 'Hook Status',
   description: [
     'This endpoint will return the current status of the hook.  This represents a',
     'snapshot in time and may vary from one call to the next.',
@@ -193,7 +193,7 @@ builder.declare({
   output: 'hook-definition.yml',
   title: 'Create a hook',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'This endpoint will create a new hook.',
     '',
@@ -237,7 +237,7 @@ builder.declare({
     const errors = [];
 
     for (let index = 0; index < ajv.errors.length; index++) {
-      errors.push(' * Property '+ ajv.errors[index].dataPath + ' ' + ajv.errors[index].message);
+      errors.push(' * Property ' + ajv.errors[index].dataPath + ' ' + ajv.errors[index].message);
     }
 
     return res.reportError('InputError', '{{message}}', {
@@ -267,6 +267,10 @@ builder.declare({
 
       }));
   } catch (err) {
+    if (err && err.code === 'PropertyTooLarge') {
+      return res.reportError('InputError', err.toString(), {});
+    }
+
     if (!err || err.code !== 'EntityAlreadyExists') {
       throw err;
     }
@@ -296,7 +300,7 @@ builder.declare({
   output: 'hook-definition.yml',
   title: 'Update a hook',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'This endpoint will update an existing hook.  All fields except',
     '`hookGroupId` and `hookId` can be modified.',
@@ -333,7 +337,7 @@ builder.declare({
     const errors = [];
 
     for (let index = 0; index < ajv.errors.length; index++) {
-      errors.push(' * Property '+ ajv.errors[index].dataPath + ' ' + ajv.errors[index].message);
+      errors.push(' * Property ' + ajv.errors[index].dataPath + ' ' + ajv.errors[index].message);
     }
 
     return res.reportError('InputError', '{{message}}', {
@@ -363,15 +367,22 @@ builder.declare({
     });
   }
 
-  await hook.modify((hook) => {
-    hook.metadata = hookDef.metadata;
-    hook.bindings = hookDef.bindings;
-    hook.task = hookDef.task;
-    hook.triggerSchema = hookDef.triggerSchema;
-    hook.schedule = schedule;
-    hook.nextTaskId = taskcluster.slugid();
-    hook.nextScheduledDate = nextDate(schedule);
-  });
+  try {
+    await hook.modify((hook) => {
+      hook.metadata = hookDef.metadata;
+      hook.bindings = hookDef.bindings;
+      hook.task = hookDef.task;
+      hook.triggerSchema = hookDef.triggerSchema;
+      hook.schedule = schedule;
+      hook.nextTaskId = taskcluster.slugid();
+      hook.nextScheduledDate = nextDate(schedule);
+    });
+  } catch (err) {
+    if (err && err.code === 'PropertyTooLarge') {
+      return res.reportError('InputError', err.toString(), {});
+    }
+    throw err;
+  }
 
   let definition = await hook.definition();
   this.publisher.hookUpdated({hookGroupId, hookId});
@@ -388,7 +399,7 @@ builder.declare({
   scopes: 'hooks:modify-hook:<hookGroupId>/<hookId>',
   title: 'Delete a hook',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'This endpoint will remove a hook definition.',
   ].join('\n'),
@@ -423,7 +434,7 @@ builder.declare({
   output: 'trigger-hook-response.yml',
   title: 'Trigger a hook',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'This endpoint will trigger the creation of a task from a hook definition.',
     '',
@@ -457,7 +468,7 @@ builder.declare({
   output: 'trigger-token-response.yml',
   title: 'Get a trigger token',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'Retrieve a unique secret token for triggering the specified hook. This',
     'token can be deactivated with `resetTriggerToken`.',
@@ -488,7 +499,7 @@ builder.declare({
   output: 'trigger-token-response.yml',
   title: 'Reset a trigger token',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'Reset the token for triggering a given hook. This invalidates token that',
     'may have been issued via getTriggerToken with a new token.',
@@ -523,7 +534,7 @@ builder.declare({
   output: 'trigger-hook-response.yml',
   title: 'Trigger a hook with a token',
   stability: 'stable',
-  category: 'Hooks Service',
+  category: 'Hooks',
   description: [
     'This endpoint triggers a defined hook with a valid token.',
     '',
@@ -632,8 +643,8 @@ builder.declare({
   idempotent: true,
   output: 'list-lastFires-response.yml',
   title: 'Get information about recent hook fires',
-  stability: 'experimental',
-  category: 'Hooks Service',
+  stability: 'stable',
+  category: 'Hook Status',
   description: [
     'This endpoint will return information about the the last few times this hook has been',
     'fired, including whether the hook was fired successfully or not',

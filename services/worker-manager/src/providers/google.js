@@ -14,7 +14,7 @@ class GoogleProvider extends Provider {
     fakeCloudApis,
     ...conf
   }) {
-    super(conf);
+    super({providerConfig, ...conf});
     let {project, creds, workerServiceAccountId, apiRateLimits = {}, _backoffDelay = 1000} = providerConfig;
     this.configSchema = 'config-google';
 
@@ -141,7 +141,13 @@ class GoogleProvider extends Provider {
       throw error();
     }
 
+    this.monitor.log.workerRunning({
+      workerPoolId: workerPool.workerPoolId,
+      providerId: this.providerId,
+      workerId: worker.workerId,
+    });
     await worker.modify(w => {
+      w.lastModified = new Date();
       w.state = this.Worker.states.RUNNING;
     });
 
@@ -179,24 +185,28 @@ class GoogleProvider extends Provider {
     }
   }
 
-  async provision({workerPool}) {
+  async provision({workerPool, existingCapacity}) {
     const {workerPoolId} = workerPool;
 
-    if (!workerPool.providerData[this.providerId] || workerPool.providerData[this.providerId].running === undefined) {
+    if (!workerPool.providerData[this.providerId]) {
       await workerPool.modify(wt => {
         wt.providerData[this.providerId] = wt.providerData[this.providerId] || {};
-        wt.providerData[this.providerId].running = wt.providerData[this.providerId].running || 0;
       });
     }
 
     let toSpawn = await this.estimator.simple({
       workerPoolId,
       ...workerPool.config,
-      runningCapacity: workerPool.providerData[this.providerId].running,
+      existingCapacity,
     });
 
     if (toSpawn === 0) {
       return; // Nothing to do
+    }
+
+    let registrationExpiry = null;
+    if ((workerPool.config.lifecycle || {}).registrationTimeout) {
+      registrationExpiry = Date.now() + workerPool.config.lifecycle.registrationTimeout * 1000;
     }
 
     const cfgs = [];
@@ -226,8 +236,10 @@ class GoogleProvider extends Provider {
             name: instanceName,
             labels: {
               ...cfg.labels || {},
+              'created-by': `taskcluster-wm-${this.providerId}`.replace(/[^a-zA-Z0-9-]/g, '-'),
               'managed-by': 'taskcluster',
-              'worker-pool-id': workerPoolId.replace('/', '_').toLowerCase(),
+              'worker-pool-id': workerPoolId.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
+              'owner': workerPool.owner.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
             },
             description: cfg.description || workerPool.description,
             serviceAccounts: [{
@@ -282,22 +294,32 @@ class GoogleProvider extends Provider {
         return;
       }
 
+      this.monitor.log.workerRequested({
+        workerPoolId,
+        providerId: this.providerId,
+        workerGroup: this.providerId,
+        workerId: op.targetId,
+      });
+      const now = new Date();
       await this.Worker.create({
         workerPoolId,
         providerId: this.providerId,
         workerGroup: this.providerId,
         workerId: op.targetId,
-        created: new Date(),
+        created: now,
+        lastModified: now,
+        lastChecked: now,
         expires: taskcluster.fromNow('1 week'),
         state: this.Worker.states.REQUESTED,
+        capacity: cfg.capacityPerInstance,
         providerData: {
           project: this.project,
           zone: cfg.zone,
-          instanceCapacity: cfg.capacityPerInstance,
           operation: {
             name: op.name,
             zone: op.zone,
           },
+          registrationExpiry,
         },
       });
     }));
@@ -320,6 +342,13 @@ class GoogleProvider extends Provider {
     this.seen[worker.workerPoolId] = this.seen[worker.workerPoolId] || 0;
     this.errors[worker.workerPoolId] = this.errors[worker.workerPoolId] || [];
 
+    if (worker.providerData.registrationExpiry &&
+      worker.state === states.REQUESTED &&
+      worker.providerData.registrationExpiry < Date.now()) {
+      return await this.removeWorker({worker});
+    }
+
+    let state = worker.state;
     try {
       const {data} = await this._enqueue('get', () => this.compute.instances.get({
         project: worker.providerData.project,
@@ -328,7 +357,7 @@ class GoogleProvider extends Provider {
       }));
       const {status} = data;
       if (['PROVISIONING', 'STAGING', 'RUNNING'].includes(status)) {
-        this.seen[worker.workerPoolId] += worker.providerData.instanceCapacity || 1;
+        this.seen[worker.workerPoolId] += worker.capacity || 1;
 
         // If the worker will be expired soon but it still exists,
         // update it to stick around a while longer. If this doesn't happen,
@@ -345,9 +374,12 @@ class GoogleProvider extends Provider {
           zone: worker.providerData.zone,
           instance: worker.workerId,
         }));
-        await worker.modify(w => {
-          w.state = states.STOPPED;
+        this.monitor.log.workerStopped({
+          workerPoolId: worker.workerPoolId,
+          providerId: this.providerId,
+          workerId: worker.workerId,
         });
+        state = states.STOPPED;
       }
     } catch (err) {
       if (err.code !== 404) {
@@ -361,20 +393,28 @@ class GoogleProvider extends Provider {
           errors: this.errors[worker.workerPoolId],
         });
       }
-      await worker.modify(w => {
-        w.state = states.STOPPED;
+      this.monitor.log.workerStopped({
+        workerPoolId: worker.workerPoolId,
+        providerId: this.providerId,
+        workerId: worker.workerId,
       });
+      state = states.STOPPED;
     }
+    await worker.modify(w => {
+      const now = new Date();
+      if (w.state !== state) {
+        w.lastModified = now;
+      }
+      w.lastChecked = now;
+      w.state = state;
+    });
   }
 
   /*
    * Called after an iteration of the worker scanner
    */
-  async scanCleanup({responsibleFor}) {
-    for (const workerPoolId of responsibleFor) {
-      this.seen[workerPoolId] = this.seen[workerPoolId] || 0;
-      this.errors[workerPoolId] = this.errors[workerPoolId] || [];
-    }
+  async scanCleanup() {
+    this.monitor.log.scanSeen({providerId: this.providerId, seen: this.seen});
     await Promise.all(Object.entries(this.seen).map(async ([workerPoolId, seen]) => {
       const workerPool = await this.WorkerPool.load({
         workerPoolId,
@@ -387,13 +427,6 @@ class GoogleProvider extends Provider {
       if (this.errors[workerPoolId].length) {
         await Promise.all(this.errors[workerPoolId].map(error => workerPool.reportError(error)));
       }
-
-      await workerPool.modify(wt => {
-        if (!wt.providerData[this.providerId]) {
-          wt.providerData[this.providerId] = {};
-        }
-        wt.providerData[this.providerId].running = seen;
-      });
     }));
   }
 

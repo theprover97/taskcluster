@@ -1,6 +1,6 @@
 import React, { Component, Fragment } from 'react';
+import classNames from 'classnames';
 import { arrayOf, shape, string } from 'prop-types';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import deepSortObject from 'deep-sort-object';
 import Code from '@mozilla-frontend-infra/components/Code';
 import Label from '@mozilla-frontend-infra/components/Label';
@@ -14,9 +14,9 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import ChevronUpIcon from 'mdi-react/ChevronUpIcon';
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import LinkIcon from 'mdi-react/LinkIcon';
 import OpenInNewIcon from 'mdi-react/OpenInNewIcon';
+import CopyToClipboardListItem from '../CopyToClipboardListItem';
 import DateDistance from '../DateDistance';
 import StatusLabel from '../StatusLabel';
 import { task } from '../../utils/prop-types';
@@ -25,16 +25,20 @@ import Link from '../../utils/Link';
 
 @withStyles(theme => ({
   headline: {
-    paddingLeft: theme.spacing.double,
-    paddingRight: theme.spacing.double,
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
   },
   cardContent: {
     paddingLeft: 0,
     paddingRight: 0,
-    paddingTop: theme.spacing.double,
-    paddingBottom: theme.spacing.double,
+    paddingTop: theme.spacing(2),
     '&:last-child': {
-      paddingBottom: theme.spacing.double,
+      paddingBottom: theme.spacing(2),
+    },
+  },
+  collapsedCard: {
+    '&:last-child': {
+      paddingBottom: theme.spacing(0),
     },
   },
   sourceHeadline: {
@@ -54,6 +58,9 @@ import Link from '../../utils/Link';
   },
   unorderedList: {
     ...theme.mixins.unorderedList,
+  },
+  listItemText: {
+    paddingLeft: theme.spacing(2),
   },
 }))
 /**
@@ -107,7 +114,12 @@ export default class TaskDetailsCard extends Component {
     return (
       <Card raised>
         <div>
-          <CardContent classes={{ root: classes.cardContent }}>
+          <CardContent
+            classes={{
+              root: classNames(classes.cardContent, {
+                [classes.collapsedCard]: !showMore,
+              }),
+            }}>
             <Typography variant="h5" className={classes.headline}>
               Task Details
             </Typography>
@@ -118,35 +130,31 @@ export default class TaskDetailsCard extends Component {
                   secondary={<StatusLabel state={task.status.state} />}
                 />
               </ListItem>
-              <CopyToClipboard
-                title={`${task.created} (Copy)`}
-                text={task.created}>
-                <ListItem button className={classes.listItemButton}>
-                  <ListItemText
-                    primary="Created"
-                    secondary={<DateDistance from={task.created} />}
-                  />
-                  <ContentCopyIcon />
-                </ListItem>
-              </CopyToClipboard>
+              <CopyToClipboardListItem
+                tooltipTitle={task.created}
+                textToCopy={task.created}
+                primary="Created"
+                secondary={<DateDistance from={task.created} />}
+              />
               <ListItem>
                 <ListItemText
                   primary="Provisioner"
                   secondary={task.provisionerId}
                 />
               </ListItem>
-              <ListItem
-                title="View Workers"
-                button
-                className={classes.listItemButton}
-                component={Link}
+              <Link
                 to={`/provisioners/${task.provisionerId}/worker-types/${task.workerType}`}>
-                <ListItemText
-                  primary="Worker Type"
-                  secondary={task.workerType}
-                />
-                <LinkIcon />
-              </ListItem>
+                <ListItem
+                  title="View Workers"
+                  button
+                  className={classes.listItemButton}>
+                  <ListItemText
+                    primary="Worker Type"
+                    secondary={task.workerType}
+                  />
+                  <LinkIcon />
+                </ListItem>
+              </Link>
               <ListItem
                 button
                 className={classes.listItemButton}
@@ -182,8 +190,17 @@ export default class TaskDetailsCard extends Component {
                 button
                 className={classes.listItemButton}
                 onClick={this.handleToggleMore}>
-                <ListItemText primary={showMore ? 'Less...' : 'More...'} />
-                {showMore ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                <ListItemText
+                  disableTypography
+                  primary={
+                    <Typography
+                      variant="subtitle1"
+                      align="center"
+                      color="textSecondary">
+                      {showMore ? 'See Less' : 'See More'}
+                    </Typography>
+                  }
+                />
               </ListItem>
             </List>
             <Collapse in={showMore} timeout="auto">
@@ -210,33 +227,20 @@ export default class TaskDetailsCard extends Component {
                     secondary={`${task.status.retriesLeft} of ${task.retries}`}
                   />
                 </ListItem>
-                <CopyToClipboard
-                  title={`${task.deadline} (Copy)`}
-                  text={task.deadline}>
-                  <ListItem button className={classes.listItemButton}>
-                    <ListItemText
-                      primary="Deadline"
-                      secondary={
-                        <DateDistance
-                          from={task.deadline}
-                          offset={task.created}
-                        />
-                      }
-                    />
-                    <ContentCopyIcon />
-                  </ListItem>
-                </CopyToClipboard>
-                <CopyToClipboard
-                  title={`${task.expires} (Copy)`}
-                  text={task.expires}>
-                  <ListItem button className={classes.listItemButton}>
-                    <ListItemText
-                      primary="Expires"
-                      secondary={<DateDistance from={task.expires} />}
-                    />
-                    <ContentCopyIcon />
-                  </ListItem>
-                </CopyToClipboard>
+                <CopyToClipboardListItem
+                  tooltipTitle={task.deadline}
+                  textToCopy={task.deadline}
+                  primary="Deadline"
+                  secondary={
+                    <DateDistance from={task.deadline} offset={task.created} />
+                  }
+                />
+                <CopyToClipboardListItem
+                  tooltipTitle={task.expires}
+                  textToCopy={task.expires}
+                  primary="Expires"
+                  secondary={<DateDistance from={task.expires} />}
+                />
                 <ListItem>
                   <ListItemText
                     primary="Priority"
@@ -274,19 +278,21 @@ export default class TaskDetailsCard extends Component {
                         }
                       />
                     </ListItem>
-                    <List dense disablePadding>
+                    <List disablePadding>
                       {dependentTasks.map(task => (
-                        <ListItem
-                          button
-                          component={Link}
-                          className={classes.listItemButton}
-                          to={`/tasks/${task.taskId}`}
-                          key={task.taskId}
-                          title="View Task">
-                          <StatusLabel state={task.status.state} />
-                          <ListItemText primary={task.metadata.name} />
-                          <LinkIcon />
-                        </ListItem>
+                        <Link key={task.taskId} to={`/tasks/${task.taskId}`}>
+                          <ListItem
+                            button
+                            className={classes.listItemButton}
+                            title="View Task">
+                            <StatusLabel state={task.status.state} />
+                            <ListItemText
+                              className={classes.listItemText}
+                              primary={task.metadata.name}
+                            />
+                            <LinkIcon />
+                          </ListItem>
+                        </Link>
                       ))}
                     </List>
                   </Fragment>
@@ -318,6 +324,7 @@ export default class TaskDetailsCard extends Component {
                           {task.scopes.map(scope => (
                             <li key={scope}>
                               <Typography
+                                variant="body2"
                                 component="span"
                                 color="textSecondary">
                                 {scope}
@@ -343,6 +350,7 @@ export default class TaskDetailsCard extends Component {
                           {task.routes.map(route => (
                             <li key={route}>
                               <Typography
+                                variant="body2"
                                 component="span"
                                 color="textSecondary">
                                 {route}

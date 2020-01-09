@@ -65,13 +65,16 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
         providerId: 'testing',
         created: now,
         expires: now,
+        lastModified: now,
+        lastChecked: now,
+        capacity: 1,
         state: 'running',
         providerData: {},
         ...values,
       });
     };
 
-    const checkWorker = async (workerPoolId='pp/wt', workerGroup='wg', workerId='wid') => {
+    const checkWorker = async (workerPoolId = 'pp/wt', workerGroup = 'wg', workerId = 'wid') => {
       return await helper.Worker.load({workerPoolId, workerGroup, workerId}, true);
     };
 
@@ -112,7 +115,7 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
       });
     };
 
-    const checkWPE = async (workerPoolId='pp/wt', errorId=eid) => {
+    const checkWPE = async (workerPoolId = 'pp/wt', errorId = eid) => {
       return await helper.WorkerPoolError.load({workerPoolId, errorId}, true);
     };
 

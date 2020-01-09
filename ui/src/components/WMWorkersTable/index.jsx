@@ -3,15 +3,12 @@ import { withRouter } from 'react-router-dom';
 import { isEmpty, map, pipe, sort as rSort } from 'ramda';
 import memoize from 'fast-memoize';
 import { formatDistanceStrict } from 'date-fns';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { arrayOf } from 'prop-types';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import AlertIcon from 'mdi-react/AlertIcon';
 import LinkIcon from 'mdi-react/LinkIcon';
-import TableRow from '@material-ui/core/TableRow/TableRow';
-import TableCell from '@material-ui/core/TableCell/TableCell';
-import ListItemText from '@material-ui/core/ListItemText/ListItemText';
-import Typography from '@material-ui/core/Typography/Typography';
+import TableRow from '@material-ui/core/TableRow';
+import TableCell from '@material-ui/core/TableCell';
+import CopyToClipboardTableCell from '../CopyToClipboardTableCell';
 import DataTable from '../DataTable';
 import TableCellItem from '../TableCellItem';
 import Link from '../../utils/Link';
@@ -91,117 +88,70 @@ export default class WorkerManagerWorkersTable extends Component {
         <TableCell>{workerGroup}</TableCell>
 
         <TableCell>
-          <TableCellItem button component={Link} to={`${path}/tasks`}>
-            <ListItemText
-              disableTypography
-              primary={<Typography>{workerId}</Typography>}
-            />
-            <LinkIcon size={iconSize} />
-          </TableCellItem>
-        </TableCell>
-
-        <CopyToClipboard title={`${workerAge} (Copy)`} text={workerAge}>
-          <TableCell>
+          <Link to={`${path}/tasks`}>
             <TableCellItem button>
-              <ListItemText
-                disableTypography
-                primary={
-                  <Typography>
-                    <DateDistance from={workerAge} />
-                  </Typography>
-                }
-              />
-              <ContentCopyIcon size={iconSize} />
-            </TableCellItem>
-          </TableCell>
-        </CopyToClipboard>
-
-        <TableCell>
-          {latestTaskRun ? (
-            <TableCellItem
-              button
-              component={Link}
-              to={`/tasks/${latestTaskRun.taskId}/runs/${latestTaskRun.runId}`}>
-              <ListItemText
-                disableTypography
-                primary={<Typography>{latestTaskRun.taskId}</Typography>}
-              />
+              {workerId}
               <LinkIcon size={iconSize} />
             </TableCellItem>
+          </Link>
+        </TableCell>
+
+        <CopyToClipboardTableCell
+          tooltipTitle={workerAge}
+          textToCopy={workerAge}
+          text={<DateDistance from={workerAge} />}
+        />
+        <TableCell>
+          {latestTaskRun ? (
+            <Link
+              to={`/tasks/${latestTaskRun.taskId}/runs/${latestTaskRun.runId}`}>
+              <TableCellItem button>
+                {latestTaskRun.taskId}
+                <LinkIcon size={iconSize} />
+              </TableCellItem>
+            </Link>
           ) : (
-            <Typography>n/a</Typography>
+            <em>n/a</em>
           )}
         </TableCell>
 
         {latestTaskRun ? (
-          <CopyToClipboard
-            title={`${latestTaskRun.started} (Copy)`}
-            text={latestTaskRun.started}>
-            <TableCell>
-              <TableCellItem button>
-                <ListItemText
-                  disableTypography
-                  primary={
-                    <Typography>
-                      <DateDistance from={latestTaskRun.started} />
-                    </Typography>
-                  }
-                />
-                <ContentCopyIcon size={iconSize} />
-              </TableCellItem>
-            </TableCell>
-          </CopyToClipboard>
+          <CopyToClipboardTableCell
+            tooltipTitle={latestTaskRun.started}
+            textToCopy={latestTaskRun.started}
+            text={<DateDistance from={latestTaskRun.started} />}
+          />
         ) : (
-          <TableCell>
-            <Typography>n/a</Typography>
-          </TableCell>
+          <TableCell>n/a</TableCell>
         )}
 
         {latestTaskRun ? (
-          <CopyToClipboard
-            title={`${latestTaskRun.resolved} (Copy)`}
-            text={latestTaskRun.resolved}>
-            <TableCell>
-              <TableCellItem button>
-                <ListItemText
-                  disableTypography
-                  primary={
-                    <Typography>
-                      <DateDistance from={latestTaskRun.resolved} />
-                    </Typography>
-                  }
-                />
-                <ContentCopyIcon size={iconSize} />
-              </TableCellItem>
-            </TableCell>
-          </CopyToClipboard>
+          <CopyToClipboardTableCell
+            tooltipTitle={latestTaskRun.resolved}
+            textToCopy={latestTaskRun.resolved}
+            text={<DateDistance from={latestTaskRun.resolved} />}
+          />
         ) : (
-          <TableCell>
-            <Typography>n/a</Typography>
-          </TableCell>
+          <TableCell>n/a</TableCell>
         )}
 
         <TableCell>
-          <TableCellItem button component={Link} to={`${path}/errors`}>
-            <ListItemText
-              disableTypography
-              primary={<Typography>Click to see errors</Typography>}
-            />
-            <AlertIcon size={iconSize} />
-          </TableCellItem>
+          <Link to={`${path}/errors`}>
+            <TableCellItem button>
+              Click to see errors
+              <AlertIcon size={iconSize} />
+            </TableCellItem>
+          </Link>
         </TableCell>
 
         <TableCell>
-          <TableCellItem
-            button
-            component={Link}
+          <Link
             to={`${path}/worker-types/${workerPool}/workers/${workerGroup}/${workerId}/resources`}>
-            <ListItemText
-              disableTypography
-              primary={<Typography>{`${recentErrors}`}</Typography>}
-            />
-            <LinkIcon size={iconSize} />
-          </TableCellItem>
+            <TableCellItem button>
+              {`${recentErrors}`}
+              <LinkIcon size={iconSize} />
+            </TableCellItem>
+          </Link>
         </TableCell>
 
         <TableCell>
@@ -210,7 +160,7 @@ export default class WorkerManagerWorkersTable extends Component {
               unit: 'day',
             })
           ) : (
-            <Typography>n/a</Typography>
+            <em>n/a</em>
           )}
         </TableCell>
       </TableRow>
@@ -279,7 +229,6 @@ export default class WorkerManagerWorkersTable extends Component {
         onHeaderClick={this.handleHeaderClick}
         renderRow={this.renderTableRow}
         headers={headers}
-        padding="dense"
       />
     );
   }

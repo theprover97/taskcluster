@@ -3,20 +3,19 @@ import { isEmpty, map, pipe, sort as rSort } from 'ramda';
 import { withStyles } from '@material-ui/core/styles';
 import { camelCase } from 'change-case';
 import memoize from 'fast-memoize';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { shape, arrayOf, string, func } from 'prop-types';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from 'mdi-react/CloseIcon';
 import InformationVariantIcon from 'mdi-react/InformationVariantIcon';
-import TableRow from '@material-ui/core/TableRow/TableRow';
+import TableRow from '@material-ui/core/TableRow';
 import Drawer from '@material-ui/core/Drawer';
-import TableCell from '@material-ui/core/TableCell/TableCell';
+import TableCell from '@material-ui/core/TableCell';
 import Code from '@mozilla-frontend-infra/components/Code';
 import List from '@material-ui/core/List';
-import ListItemText from '@material-ui/core/ListItemText/ListItemText';
+import ListItemText from '@material-ui/core/ListItemText';
 import ListItem from '@material-ui/core/ListItem';
-import Typography from '@material-ui/core/Typography/Typography';
+import Typography from '@material-ui/core/Typography';
+import CopyToClipboardTableCell from '../CopyToClipboardTableCell';
 import ConnectionDataTable from '../ConnectionDataTable';
 import { VIEW_WORKER_POOL_ERRORS_PAGE_SIZE } from '../../utils/constants';
 import TableCellItem from '../TableCellItem';
@@ -26,7 +25,7 @@ import { pageInfo, WMError } from '../../utils/prop-types';
 
 @withStyles(theme => ({
   errorDescription: {
-    marginRight: theme.spacing.unit,
+    marginRight: theme.spacing(1),
     maxWidth: '55vw',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -35,21 +34,21 @@ import { pageInfo, WMError } from '../../utils/prop-types';
     display: 'inline-block',
   },
   infoButton: {
-    marginLeft: -theme.spacing.double,
-    marginRight: theme.spacing.unit,
+    marginLeft: -theme.spacing(2),
+    marginRight: theme.spacing(1),
     borderRadius: 4,
   },
   headline: {
-    paddingLeft: theme.spacing.triple,
-    paddingRight: theme.spacing.triple,
+    paddingLeft: theme.spacing(3),
+    paddingRight: theme.spacing(3),
     textOverflow: 'ellipsis',
     overflow: 'hidden',
     maxWidth: '80vw',
     whiteSpace: 'nowrap',
   },
   metadataContainer: {
-    paddingTop: theme.spacing.double,
-    paddingBottom: theme.spacing.double,
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(2),
     width: 400,
   },
   drawerPaper: {
@@ -60,8 +59,8 @@ import { pageInfo, WMError } from '../../utils/prop-types';
   },
   drawerCloseIcon: {
     position: 'absolute',
-    top: theme.spacing.unit,
-    right: theme.spacing.unit,
+    top: theme.spacing(1),
+    right: theme.spacing(1),
   },
 }))
 export default class WorkerManagerErrorsTable extends Component {
@@ -174,26 +173,23 @@ export default class WorkerManagerErrorsTable extends Component {
             onClick={this.handleDrawerOpen}>
             <InformationVariantIcon size={iconSize} />
           </IconButton>
-          <Typography className={classes.errorDescription} title={description}>
+          <Typography
+            variant="body2"
+            className={classes.errorDescription}
+            title={description}>
             {description}
           </Typography>
         </TableCell>
 
-        <CopyToClipboard title={`${reported} (Copy)`} text={reported}>
-          <TableCell>
-            <TableCellItem button>
-              <ListItemText
-                disableTypography
-                primary={
-                  <Typography>
-                    <DateDistance from={reported} />
-                  </Typography>
-                }
-              />
-              <ContentCopyIcon size={iconSize} />
-            </TableCellItem>
-          </TableCell>
-        </CopyToClipboard>
+        <CopyToClipboardTableCell
+          tooltipTitle={reported}
+          textToCopy={reported}
+          text={
+            <Typography variant="body2">
+              <DateDistance from={reported} />
+            </Typography>
+          }
+        />
       </TableRow>
     );
   };
@@ -218,7 +214,6 @@ export default class WorkerManagerErrorsTable extends Component {
           onHeaderClick={this.handleHeaderClick}
           renderRow={this.renderTableRow}
           headers={['Title', 'Description', 'Reported']}
-          padding="dense"
           onPageChange={onPageChange}
         />
         <Drawer

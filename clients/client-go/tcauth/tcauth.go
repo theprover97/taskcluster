@@ -43,7 +43,7 @@ import (
 	"net/url"
 	"time"
 
-	tcclient "github.com/taskcluster/taskcluster/clients/client-go/v22"
+	tcclient "github.com/taskcluster/taskcluster/clients/client-go/v24"
 )
 
 type Auth tcclient.Client
@@ -63,7 +63,9 @@ type Auth tcclient.Client
 func New(credentials *tcclient.Credentials, rootURL string) *Auth {
 	return &Auth{
 		Credentials:  credentials,
-		BaseURL:      tcclient.BaseURL(rootURL, "auth", "v1"),
+		RootURL:      rootURL,
+		ServiceName:  "auth",
+		APIVersion:   "v1",
 		Authenticate: credentials != nil,
 	}
 }
@@ -84,9 +86,12 @@ func New(credentials *tcclient.Credentials, rootURL string) *Auth {
 // disabled.
 func NewFromEnv() *Auth {
 	c := tcclient.CredentialsFromEnvVars()
+	rootURL := tcclient.RootURLFromEnvVars()
 	return &Auth{
 		Credentials:  c,
-		BaseURL:      tcclient.BaseURL(tcclient.RootURLFromEnvVars(), "auth", "v1"),
+		RootURL:      rootURL,
+		ServiceName:  "auth",
+		APIVersion:   "v1",
 		Authenticate: c.ClientID != "",
 	}
 }
@@ -389,37 +394,8 @@ func (auth *Auth) CurrentScopes() (*SetOfScopes, error) {
 // parameter is required in the scope guarding access.  The bucket name must
 // not contain `.`, as recommended by Amazon.
 //
-// This method can only allow access to a whitelisted set of buckets.  To add
-// a bucket to that whitelist, contact the Taskcluster team, who will add it to
-// the appropriate IAM policy.  If the bucket is in a different AWS account, you
-// will also need to add a bucket policy allowing access from the Taskcluster
-// account.  That policy should look like this:
-//
-// ```js
-// {
-//   "Version": "2012-10-17",
-//   "Statement": [
-//     {
-//       "Sid": "allow-taskcluster-auth-to-delegate-access",
-//       "Effect": "Allow",
-//       "Principal": {
-//         "AWS": "arn:aws:iam::692406183521:root"
-//       },
-//       "Action": [
-//         "s3:ListBucket",
-//         "s3:GetObject",
-//         "s3:PutObject",
-//         "s3:DeleteObject",
-//         "s3:GetBucketLocation"
-//       ],
-//       "Resource": [
-//         "arn:aws:s3:::<bucket>",
-//         "arn:aws:s3:::<bucket>/*"
-//       ]
-//     }
-//   ]
-// }
-// ```
+// This method can only allow access to a whitelisted set of buckets, as configured
+// in the Taskcluster deployment
 //
 // The credentials are set to expire after an hour, but this behavior is
 // subject to change. Hence, you should always read the `expires` property
@@ -636,8 +612,6 @@ func (auth *Auth) AzureContainerSAS_SignedURL(account, container, level string, 
 	return (&cd).SignedURL("/azure/"+url.QueryEscape(account)+"/containers/"+url.QueryEscape(container)+"/"+url.QueryEscape(level), nil, duration)
 }
 
-// Stability: *** DEPRECATED ***
-//
 // Get temporary DSN (access credentials) for a sentry project.
 // The credentials returned can be used with any Sentry client for up to
 // 24 hours, after which the credentials will be automatically disabled.
@@ -701,10 +675,9 @@ func (auth *Auth) WebsocktunnelToken_SignedURL(wstAudience, wstClient string, du
 
 // Get temporary GCP credentials for the given serviceAccount in the given project.
 //
-// Only preconfigured projects are allowed.  Any serviceAccount in that project may
-// be used.
+// Only preconfigured projects and serviceAccounts are allowed, as defined in the
+// deployment of the Taskcluster services.
 //
-// The call adds the necessary policy if the serviceAccount doesn't have it.
 // The credentials are set to expire after an hour, but this behavior is
 // subject to change. Hence, you should always read the `expires` property
 // from the response, if you intend to maintain active credentials in your

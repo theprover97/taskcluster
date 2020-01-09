@@ -26,8 +26,8 @@ class TestingProvider extends Provider {
     }
   }
 
-  async provision({workerPool}) {
-    this.monitor.notice('test-provision', {workerPoolId: workerPool.workerPoolId});
+  async provision({workerPool, existingCapacity}) {
+    this.monitor.notice('test-provision', {workerPoolId: workerPool.workerPoolId, existingCapacity});
   }
 
   async deprovision({workerPool}) {
@@ -44,7 +44,7 @@ class TestingProvider extends Provider {
     });
   }
 
-  async scanCleanup({responsibleFor}) {
+  async scanCleanup() {
     this.monitor.notice('scan-cleanup', {});
   }
 
@@ -64,13 +64,17 @@ class TestingProvider extends Provider {
       throw new ApiError('creating workers is not supported for testing provider');
     }
 
+    const now = new Date();
     const worker = await this.Worker.create({
       workerPoolId: workerPool.workerPoolId,
       providerId: this.providerId,
       workerGroup,
       workerId,
-      created: new Date(),
+      created: now,
+      lastModified: now,
+      lastChecked: now,
       expires: new Date(input.expires),
+      capacity: input.capacity,
       state: this.Worker.states.RUNNING,
       providerData: {},
     });

@@ -36,7 +36,7 @@ builder.declare({
   },
   output: 'provider-list.yml',
   stability: 'stable',
-  category: 'Worker Manager',
+  category: 'Providers',
   title: 'List Providers',
   description: [
     'Retrieve a list of providers that are available for worker pools.',
@@ -63,8 +63,8 @@ builder.declare({
   route: '/worker-pool/:workerPoolId(*)',
   name: 'createWorkerPool',
   title: 'Create Worker Pool',
-  category: 'Worker Manager',
-  stability: APIBuilder.stability.experimental,
+  category: 'Worker Pools',
+  stability: APIBuilder.stability.stable,
   input: 'create-worker-pool-request.yml',
   output: 'worker-pool-full.yml',
   scopes: {AllOf: [
@@ -134,8 +134,8 @@ builder.declare({
   route: '/worker-pool/:workerPoolId(*)',
   name: 'updateWorkerPool',
   title: 'Update Worker Pool',
-  stability: APIBuilder.stability.experimental,
-  category: 'Worker Manager',
+  stability: APIBuilder.stability.stable,
+  category: 'Worker Pools',
   input: 'update-worker-pool-request.yml',
   output: 'worker-pool-full.yml',
   scopes: {AllOf: [
@@ -206,8 +206,8 @@ builder.declare({
   route: '/worker-pool/:workerPoolId(*)',
   name: 'deleteWorkerPool',
   title: 'Delete Worker Pool',
-  stability: APIBuilder.stability.experimental,
-  category: 'Worker Manager',
+  stability: APIBuilder.stability.stable,
+  category: 'Worker Pools',
   output: 'worker-pool-full.yml',
   scopes: 'worker-manager:manage-worker-pool:<workerPoolId>',
   description: [
@@ -246,8 +246,8 @@ builder.declare({
   route: '/worker-pool/:workerPoolId(*)',
   name: 'workerPool',
   title: 'Get Worker Pool',
-  category: 'Worker Manager',
-  stability: APIBuilder.stability.experimental,
+  category: 'Worker Pools',
+  stability: APIBuilder.stability.stable,
   output: 'worker-pool-full.yml',
   description: [
     'Fetch an existing worker pool defition.',
@@ -273,8 +273,8 @@ builder.declare({
   },
   name: 'listWorkerPools',
   title: 'List All Worker Pools',
-  stability: APIBuilder.stability.experimental,
-  category: 'Worker Manager',
+  stability: APIBuilder.stability.stable,
+  category: 'Worker Pools',
   output: 'worker-pool-list.yml',
   description: [
     'Get the list of all the existing worker pools.',
@@ -304,13 +304,13 @@ builder.declare({
   name: 'reportWorkerError',
   title: 'Report an error from a worker',
   input: 'report-worker-error-request.yml',
-  category: 'Worker Manager',
+  category: 'Worker Interface',
   output: 'worker-pool-error.yml',
   scopes: {AllOf: [
     'assume:worker-pool:<workerPoolId>',
     'assume:worker-id:<workerGroup>/<workerId>',
   ]},
-  stability: APIBuilder.stability.experimental,
+  stability: APIBuilder.stability.stable,
   description: [
     'Report an error that occurred on a worker.  This error will be included',
     'with the other errors in `listWorkerPoolErrors(workerPoolId)`.',
@@ -353,8 +353,8 @@ builder.declare({
   },
   name: 'listWorkerPoolErrors',
   title: 'List Worker Pool Errors',
-  category: 'Worker Manager',
-  stability: APIBuilder.stability.experimental,
+  category: 'Worker Pools',
+  stability: APIBuilder.stability.stable,
   output: 'worker-pool-error-list.yml',
   description: [
     'Get the list of worker pool errors.',
@@ -390,9 +390,9 @@ builder.declare({
   },
   name: 'listWorkersForWorkerGroup',
   title: 'Workers in a specific Worker Group in a Worker Pool',
-  stability: APIBuilder.stability.experimental,
+  stability: APIBuilder.stability.stable,
   output: 'worker-list.yml',
-  category: 'Worker Manager',
+  category: 'Workers',
   description: [
     'Get the list of all the existing workers in a given group in a given worker pool.',
   ].join('\n'),
@@ -423,9 +423,9 @@ builder.declare({
   route: '/workers/:workerPoolId:/:workerGroup/:workerId',
   name: 'worker',
   title: 'Get a Worker',
-  stability: APIBuilder.stability.experimental,
+  stability: APIBuilder.stability.stable,
   output: 'worker-full.yml',
-  category: 'Worker Manager',
+  category: 'Workers',
   description: [
     'Get a single worker.',
   ].join('\n'),
@@ -455,8 +455,8 @@ builder.declare({
   route: '/workers/:workerPoolId:/:workerGroup/:workerId',
   name: 'createWorker',
   title: 'Create a Worker',
-  category: 'Worker Manager',
-  stability: APIBuilder.stability.experimental,
+  category: 'Workers',
+  stability: APIBuilder.stability.stable,
   input: 'create-worker-request.yml',
   output: 'worker-full.yml',
   // note that this pattern relies on workerGroup and workerId not containing `/`
@@ -492,7 +492,10 @@ builder.declare({
       workerPool,
       workerGroup,
       workerId,
-      input: req.body,
+      input: {
+        capacity: 1,
+        ...req.body,
+      },
     });
   } catch (err) {
     if (!(err instanceof ApiError)) {
@@ -510,8 +513,8 @@ builder.declare({
   route: '/workers/:workerPoolId/:workerGroup/:workerId',
   name: 'removeWorker',
   title: 'Remove a Worker',
-  category: 'Worker Manager',
-  stability: APIBuilder.stability.experimental,
+  category: 'Workers',
+  stability: APIBuilder.stability.stable,
   // note that this pattern relies on workerGroup and workerId not containing `/`
   scopes: 'worker-manager:remove-worker:<workerPoolId>/<workerGroup>/<workerId>',
   description: [
@@ -556,8 +559,8 @@ builder.declare({
   },
   name: 'listWorkersForWorkerPool',
   title: 'Workers in a Worker Pool',
-  category: 'Worker Manager',
-  stability: APIBuilder.stability.experimental,
+  category: 'Workers',
+  stability: APIBuilder.stability.stable,
   output: 'worker-list.yml',
   description: [
     'Get the list of all the existing workers in a given worker pool.',
@@ -593,8 +596,8 @@ builder.declare({
   route: '/worker/register',
   name: 'registerWorker',
   title: 'Register a running worker',
-  stability: APIBuilder.stability.experimental,
-  category: 'Worker Manager',
+  stability: APIBuilder.stability.stable,
+  category: 'Worker Interface',
   input: 'register-worker-request.yml',
   output: 'register-worker-response.yml',
   cleanPayload,
@@ -651,16 +654,21 @@ builder.declare({
   }
   assert(expires, 'registerWorker did not return expires');
 
+  // We use these fields from inside the worker rather than
+  // what was passed in because that is the thing we have verified
+  // to be passing in the token. This helps avoid slipups later
+  // like if we had a scope based on workerGroup alone which we do
+  // not verify here
   const credentials = taskcluster.createTemporaryCredentials({
-    clientId: `worker/${providerId}/${workerPoolId}/${workerGroup}/${workerId}`,
+    clientId: `worker/${worker.providerId}/${worker.workerPoolId}/${worker.workerGroup}/${worker.workerId}`,
     scopes: [
-      `assume:worker-type:${workerPoolId}`, // deprecated role
-      `assume:worker-pool:${workerPoolId}`,
-      `assume:worker-id:${workerGroup}/${workerId}`,
-      `queue:worker-id:${workerGroup}/${workerId}`,
-      `secrets:get:worker-type:${workerPoolId}`, // deprecated secret name
-      `secrets:get:worker-pool:${workerPoolId}`,
-      `queue:claim-work:${workerPoolId}`,
+      `assume:worker-type:${worker.workerPoolId}`, // deprecated role
+      `assume:worker-pool:${worker.workerPoolId}`,
+      `assume:worker-id:${worker.workerGroup}/${worker.workerId}`,
+      `queue:worker-id:${worker.workerGroup}/${worker.workerId}`,
+      `secrets:get:worker-type:${worker.workerPoolId}`, // deprecated secret name
+      `secrets:get:worker-pool:${worker.workerPoolId}`,
+      `queue:claim-work:${worker.workerPoolId}`,
     ],
     start: taskcluster.fromNow('-15 minutes'),
     expiry: expires,

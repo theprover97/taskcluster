@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	tcclient "github.com/taskcluster/taskcluster/clients/client-go/v22"
-	"github.com/taskcluster/taskcluster/clients/client-go/v22/tcqueue"
+	tcclient "github.com/taskcluster/taskcluster/clients/client-go/v24"
+	"github.com/taskcluster/taskcluster/clients/client-go/v24/tcqueue"
 	"github.com/taskcluster/taskcluster/clients/client-shell/config"
 )
 
@@ -185,7 +185,7 @@ func filterTask(status tcqueue.TaskStatusStructure, flags *pflag.FlagSet) bool {
 		}
 	}
 
-	// TODO add other filters here when necessary
+	// ..other filters can be added here as necessary
 
 	return true
 }

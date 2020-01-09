@@ -4,8 +4,7 @@ import Label from '@mozilla-frontend-infra/components/Label';
 import { bool, arrayOf, string, func } from 'prop-types';
 import TableRow from '@material-ui/core/TableRow';
 import TableCell from '@material-ui/core/TableCell';
-import Typography from '@material-ui/core/Typography/';
-import ListItemText from '@material-ui/core/ListItemText';
+import Typography from '@material-ui/core/Typography';
 import IconButton from '@material-ui/core/IconButton';
 import LinkIcon from 'mdi-react/LinkIcon';
 import DeleteIcon from 'mdi-react/DeleteIcon';
@@ -14,29 +13,29 @@ import MessageAlertIcon from 'mdi-react/MessageAlertIcon';
 import { withRouter } from 'react-router-dom';
 import memoize from 'fast-memoize';
 import { isEmpty } from 'ramda';
+import escapeStringRegexp from 'escape-string-regexp';
 import { WorkerManagerWorkerPoolSummary } from '../../utils/prop-types';
 import DataTable from '../DataTable';
 import sort from '../../utils/sort';
 import Link from '../../utils/Link';
 import Button from '../Button';
 import TableCellItem from '../TableCellItem';
-import ErrorPanel from '../ErrorPanel';
-import formatError from '../../utils/formatError';
+import DialogAction from '../DialogAction';
 import { NULL_PROVIDER } from '../../utils/constants';
 import { splitWorkerPoolId } from '../../utils/workerPool';
 
 @withRouter
 @withStyles(theme => ({
   button: {
-    marginLeft: -theme.spacing.double,
-    marginRight: theme.spacing.unit,
+    marginLeft: -theme.spacing(2),
+    marginRight: theme.spacing(1),
     borderRadius: 4,
   },
   linksIcon: {
-    marginRight: theme.spacing.unit,
+    marginRight: theme.spacing(1),
   },
   linksButton: {
-    marginRight: theme.spacing.triple,
+    marginRight: theme.spacing(3),
   },
 }))
 export default class WorkerManagerWorkerPoolsTable extends Component {
@@ -55,15 +54,22 @@ export default class WorkerManagerWorkerPoolsTable extends Component {
   state = {
     sortBy: 'workerPoolId',
     sortDirection: 'asc',
-    error: null,
     actionLoading: false,
+    dialogState: {
+      error: null,
+      open: false,
+      title: '',
+      body: '',
+      confirmText: '',
+      item: null,
+    },
   };
 
   sortWorkerPools = memoize(
     (workerPools, sortBy, sortDirection, searchTerm, includeDeleted) => {
       const filteredWorkerPoolsBySearchTerm = searchTerm
         ? workerPools.filter(({ workerPoolId }) =>
-            workerPoolId.includes(searchTerm)
+            RegExp(escapeStringRegexp(searchTerm), 'i').test(workerPoolId)
           )
         : workerPools;
       const filteredWorkerPools = includeDeleted
@@ -112,28 +118,68 @@ export default class WorkerManagerWorkerPoolsTable extends Component {
     this.setState({ sortBy: header.id, sortDirection });
   };
 
-  handleDeleteClick = async ({ currentTarget: { name } }) => {
-    const workerPool = this.props.workerPools.find(
-      wp => wp.workerPoolId === name
-    );
+  handleDeleteClick = async () => {
+    const { item } = this.state.dialogState;
     const payload = {
-      providerId: workerPool.providerId,
-      description: workerPool.description,
-      config: workerPool.config,
-      owner: workerPool.owner,
-      emailOnError: workerPool.emailOnError,
+      providerId: item.providerId,
+      description: item.description,
+      config: item.config,
+      owner: item.owner,
+      emailOnError: item.emailOnError,
     };
 
-    this.props.history.replace('/worker-manager');
+    this.setState({
+      dialogState: {
+        ...this.state.dialogState,
+        error: null,
+      },
+    });
 
     try {
       await this.props.deleteRequest({
-        workerPoolId: workerPool.workerPoolId,
+        workerPoolId: item.workerPoolId,
         payload,
       });
+      this.setState({
+        dialogState: {
+          ...this.state.dialogState,
+          open: false,
+        },
+      });
     } catch (error) {
-      this.setState({ error: formatError(error), actionLoading: false });
+      this.handleDialogActionError(error);
     }
+  };
+
+  handleDialogActionOpen = workerPool => () => {
+    this.setState({
+      dialogState: {
+        open: true,
+        title: 'Delete Worker Pool?',
+        body: `This will delete the worker pool ${workerPool.workerPoolId}.`,
+        confirmText: 'Delete Worker Pool',
+        item: workerPool,
+      },
+    });
+  };
+
+  handleDialogActionError = error => {
+    this.setState({
+      dialogState: {
+        ...this.state.dialogState,
+        error,
+      },
+    });
+  };
+
+  handleDialogActionClose = () => {
+    this.setState({
+      dialogState: {
+        ...this.state.dialogState,
+        error: null,
+        open: false,
+      },
+    });
   };
 
   renderRow = workerPool => {
@@ -150,67 +196,59 @@ export default class WorkerManagerWorkerPoolsTable extends Component {
     return (
       <TableRow key={workerPool.workerPoolId}>
         <TableCell>
-          {workerPool.providerId !== NULL_PROVIDER ? (
-            <TableCellItem
-              button
-              component={Link}
-              to={`${path}/${encodeURIComponent(workerPool.workerPoolId)}`}>
-              <ListItemText
-                disableTypography
-                primary={<Typography>{workerPool.workerPoolId}</Typography>}
-              />
+          <Link to={`${path}/${encodeURIComponent(workerPool.workerPoolId)}`}>
+            <TableCellItem button>
+              {workerPool.workerPoolId}
               <LinkIcon size={iconSize} />
             </TableCellItem>
-          ) : (
-            <Typography>{workerPool.workerPoolId}</Typography>
-          )}
+          </Link>
         </TableCell>
 
         <TableCell>
           {workerPool.providerId !== NULL_PROVIDER ? (
-            <Typography>{workerPool.providerId}</Typography>
+            <Typography variant="body2">{workerPool.providerId}</Typography>
           ) : (
             <em>n/a</em>
           )}
         </TableCell>
 
-        <TableCell>
-          <Typography>{workerPool.pendingTasks}</Typography>
-        </TableCell>
+        <TableCell>{workerPool.pendingTasks}</TableCell>
+
+        <TableCell>{workerPool.owner}</TableCell>
 
         <TableCell>
-          <Typography>{workerPool.owner}</Typography>
-        </TableCell>
-
-        <TableCell>
-          <Button
-            className={classes.linksButton}
-            variant="outlined"
-            component={Link}
+          <Link
             to={`/provisioners/${encodeURIComponent(
               provisionerId
-            )}/worker-types/${encodeURIComponent(workerType)}`}
-            disabled={actionLoading}
-            size="small">
-            <WorkerIcon className={classes.linksIcon} size={iconSize} />
-            View Workers
-          </Button>
-          <Button
-            className={classes.linksButton}
-            variant="outlined"
-            component={Link}
-            to={`${path}/${encodeURIComponent(workerPool.workerPoolId)}/errors`}
-            disabled={actionLoading}
-            size="small">
-            <MessageAlertIcon className={classes.linksIcon} size={iconSize} />
-            View Errors
-          </Button>
+            )}/worker-types/${encodeURIComponent(workerType)}`}>
+            <Button
+              className={classes.linksButton}
+              variant="outlined"
+              disabled={actionLoading}
+              size="small">
+              <WorkerIcon className={classes.linksIcon} size={iconSize} />
+              View Workers
+            </Button>
+          </Link>
+          <Link
+            to={`${path}/${encodeURIComponent(
+              workerPool.workerPoolId
+            )}/errors`}>
+            <Button
+              className={classes.linksButton}
+              variant="outlined"
+              disabled={actionLoading}
+              size="small">
+              <MessageAlertIcon className={classes.linksIcon} size={iconSize} />
+              View Errors
+            </Button>
+          </Link>
           {workerPool.providerId !== NULL_PROVIDER ? (
             <IconButton
               title="Delete Worker Pool ID"
               className={classes.button}
               name={`${workerPool.workerPoolId}`}
-              onClick={this.handleDeleteClick}
+              onClick={this.handleDialogActionOpen(workerPool)}
               disabled={actionLoading}>
               <DeleteIcon size={iconSize} />
             </IconButton>
@@ -226,7 +264,11 @@ export default class WorkerManagerWorkerPoolsTable extends Component {
 
   render() {
     const { workerPools, searchTerm, includeDeleted } = this.props;
-    const { sortBy, sortDirection, error } = this.state;
+    const {
+      sortBy,
+      sortDirection,
+      dialogState: { open, error, title, confirmText, body },
+    } = this.state;
     const sortedWorkerPools = this.sortWorkerPools(
       workerPools,
       sortBy,
@@ -256,15 +298,24 @@ export default class WorkerManagerWorkerPoolsTable extends Component {
 
     return (
       <Fragment>
-        {error && <ErrorPanel fixed error={error} />}
         <DataTable
           items={sortedWorkerPools}
           headers={headers}
           sortByLabel={sortBy}
           sortDirection={sortDirection}
+          size="small"
           onHeaderClick={this.handleHeaderClick}
           renderRow={this.renderRow}
-          padding="dense"
+        />
+        <DialogAction
+          open={open}
+          onSubmit={this.handleDeleteClick}
+          onClose={this.handleDialogActionClose}
+          onError={this.handleDialogActionError}
+          error={error}
+          title={title}
+          body={<Typography>{body}</Typography>}
+          confirmText={confirmText}
         />
       </Fragment>
     );

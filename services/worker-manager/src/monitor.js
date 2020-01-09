@@ -18,20 +18,76 @@ monitorManager.register({
 });
 
 monitorManager.register({
+  name: 'workerRequested',
+  title: 'Worker Requested',
+  type: 'worker-requested',
+  version: 1,
+  level: 'notice',
+  description: 'A worker has been requested from a cloud api',
+  fields: {
+    workerPoolId: 'The worker pool ID (provisionerId/workerType)',
+    providerId: 'The provider that did the work for this worker pool.',
+    workerGroup: 'The worker group for this worker',
+    workerId: 'The worker that was created',
+  },
+});
+
+monitorManager.register({
+  name: 'workerRunning',
+  title: 'Worker Running',
+  type: 'worker-running',
+  version: 1,
+  level: 'notice',
+  description: 'A worker has been marked as running',
+  fields: {
+    workerPoolId: 'The worker pool ID (provisionerId/workerType)',
+    providerId: 'The provider that did the work for this worker pool.',
+    workerId: 'The worker that was created',
+  },
+});
+
+monitorManager.register({
+  name: 'workerStopped',
+  title: 'Worker Stopped',
+  type: 'worker-stopped',
+  version: 1,
+  level: 'notice',
+  description: 'A worker has been marked as stopped',
+  fields: {
+    workerPoolId: 'The worker pool ID (provisionerId/workerType)',
+    providerId: 'The provider that did the work for this worker pool.',
+    workerId: 'The worker that was created',
+  },
+});
+
+monitorManager.register({
   name: 'simpleEstimate',
   title: 'Simple Estimate Provided',
   type: 'simple-estimate',
-  version: 1,
-  level: 'notice',
+  version: 3,
+  level: 'any',
   description: 'The simple estimator has decided that we need some number of instances.',
   fields: {
     workerPoolId: 'The worker pool name (provisionerId/workerType)',
     pendingTasks: 'The number of tasks the queue reports are pending for this worker pool',
     minCapacity: 'The minimum amount of capacity that should be running',
     maxCapacity: 'The maximum amount of capacity that should be running',
-    runningCapacity: 'Amount of currently requested and available capacity',
+    existingCapacity: 'Amount of currently requested and available capacity',
     desiredCapacity: 'Amount of capacity that this estimator thinks we should have',
     requestedCapacity: 'Amount of capacity that this estimator thinks we should add',
+  },
+});
+
+monitorManager.register({
+  name: 'scanSeen',
+  title: 'Scan Seen',
+  type: 'scan-seen',
+  version: 2,
+  level: 'notice',
+  description: 'The results of a worker-scanner run',
+  fields: {
+    providerId: 'The provider that has completed this scan',
+    seen: 'A map of workerPoolId that were seen to how much capacity was seen',
   },
 });
 

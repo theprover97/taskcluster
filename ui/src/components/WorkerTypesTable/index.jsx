@@ -1,5 +1,4 @@
 import React, { Component, Fragment } from 'react';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { withStyles } from '@material-ui/core/styles';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
@@ -9,13 +8,13 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import Typography from '@material-ui/core/Typography';
 import Drawer from '@material-ui/core/Drawer';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
 import InformationVariantIcon from 'mdi-react/InformationVariantIcon';
 import { func, array, shape } from 'prop-types';
 import { pipe, map, sort as rSort } from 'ramda';
 import memoize from 'fast-memoize';
 import { camelCase } from 'change-case';
 import LinkIcon from 'mdi-react/LinkIcon';
+import CopyToClipboardTableCell from '../CopyToClipboardTableCell';
 import StatusLabel from '../StatusLabel';
 import DateDistance from '../DateDistance';
 import Markdown from '../Markdown';
@@ -36,17 +35,17 @@ const sorted = pipe(
 
 @withStyles(theme => ({
   infoButton: {
-    marginLeft: -theme.spacing.double,
-    marginRight: theme.spacing.unit,
+    marginLeft: -theme.spacing(2),
+    marginRight: theme.spacing(1),
     borderRadius: 4,
   },
   headline: {
-    paddingLeft: theme.spacing.triple,
-    paddingRight: theme.spacing.triple,
+    paddingLeft: theme.spacing(3),
+    paddingRight: theme.spacing(3),
   },
   metadataContainer: {
-    paddingTop: theme.spacing.double,
-    paddingBottom: theme.spacing.double,
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(2),
     width: 400,
   },
 }))
@@ -178,37 +177,22 @@ export default class WorkerTypesTable extends Component {
                   onClick={this.handleDrawerOpen}>
                   <InformationVariantIcon size={iconSize} />
                 </IconButton>
-                <TableCellItem
-                  button
-                  component={Link}
+                <Link
                   to={`/provisioners/${workerType.provisionerId}/worker-types/${workerType.workerType}`}>
-                  <ListItemText
-                    disableTypography
-                    primary={<Typography>{workerType.workerType}</Typography>}
-                  />
-                  <LinkIcon size={iconSize} />
-                </TableCellItem>
+                  <TableCellItem button>
+                    {workerType.workerType}
+                    <LinkIcon size={iconSize} />
+                  </TableCellItem>
+                </Link>
               </TableCell>
               <TableCell>
                 <StatusLabel state={workerType.stability} />
               </TableCell>
-              <CopyToClipboard
-                title={`${workerType.lastDateActive} (Copy)`}
-                text={workerType.lastDateActive}>
-                <TableCell>
-                  <TableCellItem button>
-                    <ListItemText
-                      disableTypography
-                      primary={
-                        <Typography>
-                          <DateDistance from={workerType.lastDateActive} />
-                        </Typography>
-                      }
-                    />
-                    <ContentCopyIcon size={iconSize} />
-                  </TableCellItem>
-                </TableCell>
-              </CopyToClipboard>
+              <CopyToClipboardTableCell
+                tooltipTitle={workerType.lastDateActive}
+                textToCopy={workerType.lastDateActive}
+                text={<DateDistance from={workerType.lastDateActive} />}
+              />
               <TableCell>{workerType.pendingTasks}</TableCell>
               {'runningCapacity' in workerType && (
                 <TableCell>{workerType.runningCapacity}</TableCell>

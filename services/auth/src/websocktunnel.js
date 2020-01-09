@@ -11,7 +11,7 @@ builder.declare({
   name: 'websocktunnelToken',
   output: 'websocktunnel-token-response.yml',
   stability: 'stable',
-  category: 'Auth Service',
+  category: 'Websocktunnel Credentials',
   scopes: 'auth:websocktunnel-token:<wstAudience>/<wstClient>',
   title: 'Get a client token for the Websocktunnel service',
   description: [
@@ -29,7 +29,7 @@ builder.declare({
 }, async function(req, res) {
   const {wstAudience, wstClient} = req.params;
   const clientId = await req.clientId();
-  const nowTs = Math.floor(Date.now()/1000);
+  const nowTs = Math.floor(Date.now() / 1000);
   const expiresTs = nowTs + 96 * 3600;
 
   const payload = {

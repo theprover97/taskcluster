@@ -2,28 +2,28 @@ import React, { Fragment, Component } from 'react';
 import { arrayOf, string } from 'prop-types';
 import { withRouter } from 'react-router-dom';
 import {
-  uniq,
-  flatten,
   filter,
   pipe,
   map,
+  length,
   contains,
   prop,
+  toLower,
   pluck,
+  includes,
   sort as rSort,
 } from 'ramda';
 import memoize from 'fast-memoize';
 import { FixedSizeList } from 'react-window';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
-import ListItemText from '@material-ui/core/ListItemText';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import Divider from '@material-ui/core/Divider';
 import LinkIcon from 'mdi-react/LinkIcon';
 import sort from '../../utils/sort';
 import Link from '../../utils/Link';
-import { role, scopeExpansionLevel } from '../../utils/prop-types';
+import { role } from '../../utils/prop-types';
 
 const sorted = pipe(
   rSort((a, b) => sort(a.roleId, b.roleId)),
@@ -34,30 +34,29 @@ const sorted = pipe(
 @withStyles(theme => ({
   listItemButton: {
     ...theme.mixins.listItemButton,
+    display: 'flex',
+    justifyContent: 'space-between',
   },
   listItemCell: {
     display: 'flex',
     justifyContent: 'space-between',
     width: '100%',
-    padding: theme.spacing.unit,
+    padding: theme.spacing(1),
     ...theme.mixins.hover,
   },
   noRolesText: {
-    marginTop: theme.spacing.double,
+    marginTop: theme.spacing(2),
   },
 }))
 export default class RoleScopesTable extends Component {
   static defaultProps = {
     searchTerm: null,
     selectedScope: null,
-    searchProperty: 'expandedScopes',
   };
 
   static propTypes = {
     /** A GraphQL roles response. */
     roles: arrayOf(role).isRequired,
-    /** The scope expansion level. */
-    searchProperty: scopeExpansionLevel,
     /** A string to filter the list of results. */
     searchTerm: string,
     /**
@@ -68,24 +67,29 @@ export default class RoleScopesTable extends Component {
   };
 
   createSortedRolesScopes = memoize(
-    (roles, selectedScope, searchProperty) => {
-      const extractExpandedScopes = pipe(
-        pluck('expandedScopes'),
-        flatten,
-        uniq,
-        rSort(sort)
-      );
+    (roles, selectedScope) => {
       const extractRoles = pipe(
-        filter(prop(searchProperty)),
+        filter(
+          pipe(
+            prop('expandedScopes'),
+            filter(
+              pipe(
+                toLower,
+                includes(selectedScope),
+                length
+              )
+            )
+          )
+        ),
         pluck('roleId'),
         rSort(sort)
       );
 
-      return selectedScope ? extractRoles(roles) : extractExpandedScopes(roles);
+      return extractRoles(roles);
     },
     {
-      serializer: ([roles, selectedScope, searchProperty]) =>
-        `${sorted(roles).join('-')}-${selectedScope}-${searchProperty}`,
+      serializer: ([roles, selectedScope]) =>
+        `${sorted(roles).join('-')}-${selectedScope}`,
     }
   );
 
@@ -96,19 +100,17 @@ export default class RoleScopesTable extends Component {
 
     return (
       <Fragment>
-        <ListItem
-          className={classes.listItemButton}
-          style={style}
-          button
-          component={Link}
+        <Link
           to={
             selectedScope
               ? `/auth/roles/${encodeURIComponent(item)}`
               : `/auth/scopes/${encodeURIComponent(item)}`
           }>
-          <ListItemText primary={item} />
-          <LinkIcon size={iconSize} />
-        </ListItem>
+          <ListItem className={classes.listItemButton} style={style} button>
+            {item}
+            <LinkIcon size={iconSize} />
+          </ListItem>
+        </Link>
         <Divider
           style={{
             ...style,
@@ -120,19 +122,8 @@ export default class RoleScopesTable extends Component {
   };
 
   render() {
-    const {
-      classes,
-      roles,
-      searchTerm,
-      selectedScope,
-      searchProperty,
-      ...props
-    } = this.props;
-    const items = this.createSortedRolesScopes(
-      roles,
-      selectedScope,
-      searchProperty
-    );
+    const { classes, roles, searchTerm, selectedScope, ...props } = this.props;
+    const items = this.createSortedRolesScopes(roles, selectedScope);
     const filteredItems = searchTerm
       ? filter(contains(searchTerm), items)
       : items;
@@ -147,7 +138,7 @@ export default class RoleScopesTable extends Component {
         </FixedSizeList>
       </List>
     ) : (
-      <Typography className={classes.noRolesText}>
+      <Typography variant="body2" className={classes.noRolesText}>
         No roles available
       </Typography>
     );

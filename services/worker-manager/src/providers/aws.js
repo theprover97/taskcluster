@@ -30,6 +30,7 @@ class AwsProvider extends Provider {
       estimator,
       validator,
       notify,
+      providerConfig,
     });
     this.configSchema = 'config-aws';
     this.ec2iid_RSA_key = fs.readFileSync(path.resolve(__dirname, 'aws-keys/RSA-key-forSignature')).toString();
@@ -81,13 +82,12 @@ class AwsProvider extends Provider {
     this._enqueue = cloud.enqueue.bind(cloud);
   }
 
-  async provision({workerPool}) {
+  async provision({workerPool, existingCapacity}) {
     const {workerPoolId} = workerPool;
 
-    if (!workerPool.providerData[this.providerId] || workerPool.providerData[this.providerId].running === undefined) {
+    if (!workerPool.providerData[this.providerId]) {
       await workerPool.modify(wt => {
         wt.providerData[this.providerId] = wt.providerData[this.providerId] || {};
-        wt.providerData[this.providerId].running = wt.providerData[this.providerId].running || 0;
       });
     }
 
@@ -95,11 +95,17 @@ class AwsProvider extends Provider {
       workerPoolId,
       minCapacity: workerPool.config.minCapacity,
       maxCapacity: workerPool.config.maxCapacity,
-      runningCapacity: workerPool.providerData[this.providerId].running,
+      existingCapacity,
     });
     if (toSpawn === 0) {
       return;
     }
+
+    let registrationExpiry = null;
+    if ((workerPool.config.lifecycle || {}).registrationTimeout) {
+      registrationExpiry = Date.now() + workerPool.config.lifecycle.registrationTimeout * 1000;
+    }
+
     const toSpawnPerConfig = Math.ceil(toSpawn / workerPool.config.launchConfigs.length);
     const shuffledConfigs = _.shuffle(workerPool.config.launchConfigs);
 
@@ -109,11 +115,13 @@ class AwsProvider extends Provider {
       // Make sure we don't get "The same resource type may not be specified
       // more than once in tag specifications" errors
       const TagSpecifications = config.launchConfig.TagSpecifications || [];
-      const instanceTags = [];
-      const otherTagSpecs = [];
-      TagSpecifications.forEach(ts =>
-        ts.ResourceType === 'instance' ? instanceTags.concat(ts.Tags) : otherTagSpecs.push(ts),
-      );
+      let instanceTags = [];
+      let otherTagSpecs = [];
+      TagSpecifications.forEach(ts => {
+        ts.ResourceType === 'instance'
+          ? instanceTags = instanceTags.concat(ts.Tags)
+          : otherTagSpecs.push(ts);
+      });
 
       const userData = Buffer.from(JSON.stringify({
         ...config.additionalUserData,
@@ -165,6 +173,10 @@ class AwsProvider extends Provider {
                 {
                   Key: 'Name',
                   Value: `${workerPoolId}`,
+                },
+                {
+                  Key: 'WorkerPoolId',
+                  Value: `${workerPoolId}`,
                 }],
             },
           ],
@@ -179,20 +191,31 @@ class AwsProvider extends Provider {
         });
       }
 
-      toSpawnCounter -= toSpawnPerConfig;
+      // count down the capacity we actually spawned (which may be somewhat
+      // greater than toSpawnPerConfig due to rounding)
+      toSpawnCounter -= instanceCount * config.capacityPerInstance;
 
       await Promise.all(spawned.Instances.map(i => {
+        this.monitor.log.workerRequested({
+          workerPoolId,
+          providerId: this.providerId,
+          workerGroup: this.providerId,
+          workerId: i.InstanceId,
+        });
+        const now = new Date();
         return this.Worker.create({
           workerPoolId,
           providerId: this.providerId,
           workerGroup: this.providerId,
           workerId: i.InstanceId,
-          created: new Date(),
+          created: now,
+          lastModified: now,
+          lastChecked: now,
           expires: taskcluster.fromNow('1 week'),
           state: this.Worker.states.REQUESTED,
+          capacity: config.capacityPerInstance,
           providerData: {
             region: config.region,
-            instanceCapacity: config.capacityPerInstance,
             groups: spawned.Groups,
             amiLaunchIndex: i.AmiLaunchIndex,
             imageId: i.ImageId,
@@ -203,6 +226,7 @@ class AwsProvider extends Provider {
             owner: spawned.OwnerId,
             state: i.State.Name,
             stateReason: i.StateReason.Message,
+            registrationExpiry,
           },
         });
       }));
@@ -237,7 +261,13 @@ class AwsProvider extends Provider {
     }
 
     // mark it as running
+    this.monitor.log.workerRunning({
+      workerPoolId: workerPool.workerPoolId,
+      providerId: this.providerId,
+      workerId: worker.workerId,
+    });
     await worker.modify(w => {
+      w.lastModified = new Date();
       w.state = this.Worker.states.RUNNING;
     });
 
@@ -248,37 +278,62 @@ class AwsProvider extends Provider {
   async checkWorker({worker}) {
     this.seen[worker.workerPoolId] = this.seen[worker.workerPoolId] || 0;
 
-    let instanceStatuses;
+    if (worker.providerData.registrationExpiry &&
+      worker.state === this.Worker.states.REQUESTED &&
+      worker.providerData.registrationExpiry < Date.now()) {
+      return await this.removeWorker({worker});
+    }
+
+    let state = worker.state;
     try {
       const region = worker.providerData.region;
-      instanceStatuses = (await this._enqueue(`${region}.describe`, () => this.ec2s[region].describeInstanceStatus({
+      const instanceStatuses = (await this._enqueue(`${region}.describe`, () => this.ec2s[region].describeInstanceStatus({
         InstanceIds: [worker.workerId.toString()],
         IncludeAllInstances: true,
       }).promise())).InstanceStatuses;
-    } catch (e) {
-      if (e.code === 'InvalidInstanceID.NotFound') { // aws throws this error for instances that had been terminated, too
-        return worker.modify(w => {w.state = this.Worker.states.STOPPED;});
+      for (const is of instanceStatuses) {
+        switch (is.InstanceState.Name) {
+          case 'pending':
+          case 'running':
+          case 'shutting-down': //so that we don't turn on new instances until they're entirely gone
+          case 'stopping':
+            this.seen[worker.workerPoolId] += worker.capacity || 1;
+            break;
+
+          case 'terminated':
+          case 'stopped':
+            this.monitor.log.workerStopped({
+              workerPoolId: worker.workerPoolId,
+              providerId: this.providerId,
+              workerId: worker.workerId,
+            });
+            state = this.Worker.states.STOPPED;
+            break;
+
+          default:
+            throw new Error(`Unknown state: ${is.InstanceState.Name} for ${is.InstanceId}`);
+        }
       }
-      throw e;
+    } catch (e) {
+      if (e.code !== 'InvalidInstanceID.NotFound') { // aws throws this error for instances that had been terminated, too
+        throw e;
+      }
+      this.monitor.log.workerStopped({
+        workerPoolId: worker.workerPoolId,
+        providerId: this.providerId,
+        workerId: worker.workerId,
+      });
+      state = this.Worker.states.STOPPED;
     }
 
-    Promise.all(instanceStatuses.map(is => {
-      switch (is.InstanceState.Name) {
-        case 'pending':
-        case 'running':
-        case 'shutting-down': //so that we don't turn on new instances until they're entirely gone
-        case 'stopping':
-          this.seen[worker.workerPoolId] += worker.providerData.instanceCapacity || 1;
-          return Promise.resolve();
-
-        case 'terminated':
-        case 'stopped':
-          return worker.modify(w => {w.state = this.Worker.states.STOPPED;});
-
-        default:
-          return Promise.reject(`Unknown state: ${is.InstanceState.Name} for ${is.InstanceId}`);
+    await worker.modify(w => {
+      const now = new Date();
+      if (w.state !== state) {
+        w.lastModified = now;
       }
-    }));
+      w.lastChecked = now;
+      w.state = state;
+    });
   }
 
   async removeWorker({worker}) {
@@ -317,27 +372,8 @@ class AwsProvider extends Provider {
     this.seen = {};
   }
 
-  async scanCleanup({responsibleFor}) {
-    for (const workerPoolId of responsibleFor) {
-      this.seen[workerPoolId] = this.seen[workerPoolId] || 0;
-    }
-    this.monitor.notice('scan-seen', {providerId: this.providerId, seen: this.seen, responsible: [...responsibleFor]});
-    await Promise.all(Object.entries(this.seen).map(async ([workerPoolId, seen]) => {
-      const workerPool = await this.WorkerPool.load({
-        workerPoolId,
-      }, true);
-
-      if (!workerPool) {
-        return; // In this case, the worker pool has been deleted so we can just move on
-      }
-
-      await workerPool.modify(wp => {
-        if (!wp.providerData[this.providerId]) {
-          wp.providerData[this.providerId] = {};
-        }
-        wp.providerData[this.providerId].running = seen;
-      });
-    }));
+  async scanCleanup() {
+    this.monitor.log.scanSeen({providerId: this.providerId, seen: this.seen});
   }
 
   /**

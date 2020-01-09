@@ -3,13 +3,11 @@ import { func, string } from 'prop-types';
 import { formatDistanceStrict, parseISO } from 'date-fns';
 import { pipe, map, sort as rSort } from 'ramda';
 import memoize from 'fast-memoize';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
-import ListItemText from '@material-ui/core/ListItemText';
-import Typography from '@material-ui/core/Typography';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import ContentCopyIcon from 'mdi-react/ContentCopyIcon';
+import { withStyles } from '@material-ui/core/styles';
 import LinkIcon from 'mdi-react/LinkIcon';
+import CopyToClipboardTableCell from '../CopyToClipboardTableCell';
 import StatusLabel from '../StatusLabel';
 import DateDistance from '../DateDistance';
 import TableCellItem from '../TableCellItem';
@@ -29,6 +27,11 @@ const sorted = pipe(
   )
 );
 
+@withStyles(theme => ({
+  linksIcon: {
+    marginLeft: theme.spacing(1),
+  },
+}))
 /**
  * Display relevant information about workers in a table.
  */
@@ -110,6 +113,7 @@ export default class WorkersTable extends Component {
       workerType,
       onPageChange,
       workersConnection,
+      classes,
       ...props
     } = this.props;
     const iconSize = 16;
@@ -139,100 +143,56 @@ export default class WorkersTable extends Component {
           <TableRow key={workerId}>
             <TableCell>{workerGroup}</TableCell>
             <TableCell>
-              <TableCellItem
-                button
-                component={Link}
+              <Link
                 to={`/provisioners/${provisionerId}/worker-types/${workerType}/workers/${workerGroup}/${workerId}`}>
-                <ListItemText
-                  disableTypography
-                  primary={<Typography>{workerId}</Typography>}
-                />
-                <LinkIcon size={iconSize} />
-              </TableCellItem>
-            </TableCell>
-            <CopyToClipboard title={`${firstClaim} (Copy)`} text={firstClaim}>
-              <TableCell>
                 <TableCellItem button>
-                  <ListItemText
-                    disableTypography
-                    primary={
-                      <Typography>
-                        <DateDistance from={firstClaim} />
-                      </Typography>
-                    }
-                  />
-                  <ContentCopyIcon size={iconSize} />
+                  {workerId}
+                  <LinkIcon className={classes.linksIcon} size={iconSize} />
                 </TableCellItem>
-              </TableCell>
-            </CopyToClipboard>
+              </Link>
+            </TableCell>
+            <CopyToClipboardTableCell
+              tooltipTitle={firstClaim}
+              textToCopy={firstClaim}
+              text={<DateDistance from={firstClaim} />}
+            />
             <TableCell>
               {latestTask ? (
-                <TableCellItem
-                  button
-                  component={Link}
+                <Link
                   to={`/tasks/${latestTask.run.taskId}/runs/${latestTask.run.runId}`}>
-                  <ListItemText
-                    disableTypography
-                    primary={<Typography>{latestTask.run.taskId}</Typography>}
-                  />
-                  <LinkIcon size={iconSize} />
-                </TableCellItem>
+                  <TableCellItem button>
+                    {latestTask.run.taskId}
+                    <LinkIcon className={classes.linksIcon} size={iconSize} />
+                  </TableCellItem>
+                </Link>
               ) : (
-                <Typography>n/a</Typography>
+                <em>n/a</em>
               )}
             </TableCell>
             <TableCell>
               {latestTask ? (
                 <StatusLabel state={latestTask.run.state} />
               ) : (
-                <Typography>n/a</Typography>
+                <em>n/a</em>
               )}
             </TableCell>
             {latestTask ? (
-              <CopyToClipboard
-                title={`${latestTask.run.started} (Copy)`}
-                text={latestTask.run.started}>
-                <TableCell>
-                  <TableCellItem button>
-                    <ListItemText
-                      disableTypography
-                      primary={
-                        <Typography>
-                          <DateDistance from={latestTask.run.started} />
-                        </Typography>
-                      }
-                    />
-                    <ContentCopyIcon size={iconSize} />
-                  </TableCellItem>
-                </TableCell>
-              </CopyToClipboard>
+              <CopyToClipboardTableCell
+                tooltipTitle={latestTask.run.started}
+                textToCopy={latestTask.run.started}
+                text={<DateDistance from={latestTask.run.started} />}
+              />
             ) : (
-              <TableCell>
-                <Typography>n/a</Typography>
-              </TableCell>
+              <TableCell>n/a</TableCell>
             )}
             {latestTask && latestTask.run.resolved ? (
-              <CopyToClipboard
-                title={`${latestTask.run.resolved} (Copy)`}
-                text={latestTask.run.resolved}>
-                <TableCell>
-                  <TableCellItem button>
-                    <ListItemText
-                      disableTypography
-                      primary={
-                        <Typography>
-                          <DateDistance from={latestTask.run.resolved} />
-                        </Typography>
-                      }
-                    />
-                    <ContentCopyIcon size={iconSize} />
-                  </TableCellItem>
-                </TableCell>
-              </CopyToClipboard>
+              <CopyToClipboardTableCell
+                tooltipTitle={latestTask.run.resolved}
+                textToCopy={latestTask.run.resolved}
+                text={<DateDistance from={latestTask.run.resolved} />}
+              />
             ) : (
-              <TableCell>
-                <Typography>n/a</Typography>
-              </TableCell>
+              <TableCell>n/a</TableCell>
             )}
             <TableCell>
               {quarantineUntil ? (
@@ -240,7 +200,7 @@ export default class WorkersTable extends Component {
                   unit: 'day',
                 })
               ) : (
-                <Typography>n/a</Typography>
+                <em>n/a</em>
               )}
             </TableCell>
           </TableRow>

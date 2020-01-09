@@ -50,6 +50,9 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
       config: {
         minCapacity: 1,
         maxCapacity: 1,
+        lifecycle: {
+          registrationTimeout: 6000,
+        },
         launchConfigs: [
           {
             capacityPerInstance: 1,
@@ -71,8 +74,12 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
   });
 
   test('provisioning loop', async function() {
-    await provider.provision({workerPool});
+    const now = Date.now();
+    await provider.provision({workerPool, existingCapacity: 0});
     const workers = await helper.Worker.scan({}, {});
+    // Check that this is setting times correctly to within a second or so to allow for some time
+    // for the provisioning loop
+    assert(workers.entries[0].providerData.registrationExpiry - now - (6000 * 1000) < 5000);
     assert.deepEqual(workers.entries[0].providerData.operation, {
       name: 'foo',
       zone: 'whatever/a',
@@ -81,8 +88,8 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
 
   test('provisioning loop with failure', async function() {
     // The fake throws an error on the second call
-    await provider.provision({workerPool});
-    await provider.provision({workerPool});
+    await provider.provision({workerPool, existingCapacity: 0});
+    await provider.provision({workerPool, existingCapacity: 0});
     const errors = await helper.WorkerPoolError.scan({}, {});
     assert.equal(errors.entries.length, 1);
     assert.equal(errors.entries[0].description, 'something went wrong');
@@ -92,9 +99,9 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
 
   test('provisioning loop with rate limiting', async function() {
     // Notice this is only three loops, but instance insert fails on third try before succeeding on 4th
-    await provider.provision({workerPool});
-    await provider.provision({workerPool});
-    await provider.provision({workerPool});
+    await provider.provision({workerPool, existingCapacity: 0});
+    await provider.provision({workerPool, existingCapacity: 0});
+    await provider.provision({workerPool, existingCapacity: 0});
 
     const workers = await helper.Worker.scan({}, {});
     assert.equal(workers.entries.length, 2);
@@ -130,7 +137,10 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
       workerId,
       providerId,
       created: taskcluster.fromNow('0 seconds'),
+      lastModified: taskcluster.fromNow('0 seconds'),
+      lastChecked: taskcluster.fromNow('0 seconds'),
       expires: taskcluster.fromNow('90 seconds'),
+      capacity: 1,
       state: 'requested',
       providerData: {zone: 'us-east1-a'},
     });
@@ -139,7 +149,7 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
   });
 
   test('worker-scan loop', async function() {
-    await provider.provision({workerPool});
+    await provider.provision({workerPool, existingCapacity: 0});
     const worker = await helper.Worker.load({
       workerPoolId: 'foo/bar',
       workerId: '123',
@@ -152,18 +162,14 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
     // On the first run we've faked that the instance is running
     await provider.scanPrepare();
     await provider.checkWorker({worker});
-    await provider.scanCleanup({responsibleFor: new Set([workerPoolId])});
-    await workerPool.reload();
-    assert.equal(workerPool.providerData.google.running, 1);
+    await provider.scanCleanup();
     await worker.reload();
     assert.equal(worker.state, helper.Worker.states.REQUESTED); // RUNNING is set by register which does not happen here
 
     // And now we fake it is stopped
     await provider.scanPrepare();
     await provider.checkWorker({worker});
-    await provider.scanCleanup({responsibleFor: new Set([workerPoolId])});
-    await workerPool.reload();
-    assert.equal(workerPool.providerData.google.running, 0);
+    await provider.scanCleanup();
     await worker.reload();
     assert.equal(worker.state, helper.Worker.states.STOPPED);
   });
@@ -176,14 +182,63 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
       workerId: 'whatever',
       providerId,
       created: taskcluster.fromNow('-2 weeks'),
+      lastModified: taskcluster.fromNow('-2 weeks'),
+      lastChecked: taskcluster.fromNow('-2 weeks'),
+      capacity: 1,
       expires,
       state: helper.Worker.states.RUNNING,
       providerData: {zone: 'us-east1-a'},
     });
     await provider.scanPrepare();
     await provider.checkWorker({worker});
-    await provider.scanCleanup({responsibleFor: new Set([workerPoolId])});
+    await provider.scanCleanup();
     assert(worker.expires > expires);
+  });
+
+  test('remove unregistered workers', async function() {
+    const worker = await helper.Worker.create({
+      workerPoolId,
+      workerGroup: 'whatever',
+      workerId: 'whatever',
+      providerId,
+      capacity: 1,
+      created: taskcluster.fromNow('-1 hour'),
+      lastModified: taskcluster.fromNow('-2 weeks'),
+      lastChecked: taskcluster.fromNow('-2 weeks'),
+      expires: taskcluster.fromNow('1 week'),
+      state: helper.Worker.states.REQUESTED,
+      providerData: {
+        zone: 'us-east1-a',
+        registrationExpiry: Date.now() - 1000,
+      },
+    });
+    await provider.scanPrepare();
+    await provider.checkWorker({worker});
+    await provider.scanCleanup();
+    assert(fakeGoogle.instanceDeleteStub.called);
+  });
+
+  test('don\'t remove unregistered workers that are new', async function() {
+    const worker = await helper.Worker.create({
+      workerPoolId,
+      workerGroup: 'whatever',
+      workerId: 'whatever',
+      providerId,
+      created: taskcluster.fromNow('-1 hour'),
+      expires: taskcluster.fromNow('1 week'),
+      capacity: 1,
+      lastModified: taskcluster.fromNow('-2 weeks'),
+      lastChecked: taskcluster.fromNow('-2 weeks'),
+      state: helper.Worker.states.REQUESTED,
+      providerData: {
+        zone: 'us-east1-a',
+        registrationExpiry: Date.now() + 1000,
+      },
+    });
+    await provider.scanPrepare();
+    await provider.checkWorker({worker});
+    await provider.scanCleanup();
+    assert(!fakeGoogle.instanceDeleteStub.called);
   });
 
   suite('_enqueue p-queues', function() {
@@ -245,6 +300,9 @@ helper.secrets.mockSuite(testing.suiteName(), ['azure'], function(mock, skipping
       workerId,
       providerId,
       created: taskcluster.fromNow('0 seconds'),
+      lastModified: taskcluster.fromNow('0 seconds'),
+      lastChecked: taskcluster.fromNow('0 seconds'),
+      capacity: 1,
       expires: taskcluster.fromNow('90 seconds'),
       state: 'requested',
       providerData: {},

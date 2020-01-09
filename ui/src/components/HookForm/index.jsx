@@ -6,7 +6,6 @@ import cloneDeep from 'lodash.clonedeep';
 import CodeEditor from '@mozilla-frontend-infra/components/CodeEditor';
 import Code from '@mozilla-frontend-infra/components/Code';
 import Drawer from '@material-ui/core/Drawer';
-import MarkdownTextArea from '@mozilla-frontend-infra/components/MarkdownTextArea';
 import { withStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -25,6 +24,7 @@ import PlusIcon from 'mdi-react/PlusIcon';
 import DeleteIcon from 'mdi-react/DeleteIcon';
 import ContentSaveIcon from 'mdi-react/ContentSaveIcon';
 import { docs } from 'taskcluster-lib-urls';
+import MarkdownTextArea from '../MarkdownTextArea';
 import ErrorPanel from '../ErrorPanel';
 import Button from '../Button';
 import SpeedDial from '../SpeedDial';
@@ -75,8 +75,8 @@ const initialHook = {
   },
   saveHookSpan: {
     position: 'fixed',
-    bottom: theme.spacing.double,
-    right: theme.spacing.unit * 11,
+    bottom: theme.spacing(2),
+    right: theme.spacing(11),
   },
   iconButton: {
     '& svg': {
@@ -89,8 +89,14 @@ const initialHook = {
   successIcon: {
     ...theme.mixins.successIcon,
   },
+  successTooltipLabel: {
+    backgroundColor: theme.mixins.successIcon.backgroundColor,
+  },
   deleteIcon: {
     ...theme.mixins.errorIcon,
+  },
+  deleteTooltipLabel: {
+    backgroundColor: theme.mixins.errorIcon.backgroundColor,
   },
   code: {
     maxHeight: '70vh',
@@ -115,12 +121,12 @@ const initialHook = {
     },
   },
   headline: {
-    paddingLeft: theme.spacing.triple,
-    paddingRight: theme.spacing.triple,
+    paddingLeft: theme.spacing(3),
+    paddingRight: theme.spacing(3),
   },
   metadataContainer: {
-    paddingTop: theme.spacing.double,
-    paddingBottom: theme.spacing.double,
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(2),
   },
   drawerPaper: {
     width: '40vw',
@@ -129,28 +135,28 @@ const initialHook = {
     },
   },
   hookDescriptionListItem: {
-    marginTop: theme.spacing.unit,
-    marginBottom: theme.spacing.triple,
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(3),
   },
   scheduleContainer: {
-    paddingRight: theme.spacing.double,
+    paddingRight: theme.spacing(2),
     display: 'flex',
     flex: 1,
     alignItems: 'flex-end',
   },
   scheduleTextField: {
-    paddingRight: theme.spacing.double,
+    paddingRight: theme.spacing(2),
   },
   scheduleListItem: {
     flexDirection: 'column',
     alignItems: 'stretch',
   },
   taskTemplateListItem: {
-    marginBottom: theme.spacing.double,
+    marginBottom: theme.spacing(2),
   },
   ownerEmailListItem: {
     display: 'block',
-    marginTop: theme.spacing.triple,
+    marginTop: theme.spacing(3),
   },
   hookGroupAndIdDiv: {
     display: 'flex',
@@ -826,8 +832,11 @@ export default class HookForm extends Component {
                 tooltipOpen
                 icon={<DeleteIcon />}
                 onClick={onDialogDeleteHook}
-                className={classes.deleteIcon}
-                ButtonProps={{
+                classes={{
+                  icon: classes.deleteIcon,
+                  staticTooltipLabel: classes.deleteTooltipLabel,
+                }}
+                FabProps={{
                   disabled: actionLoading,
                 }}
                 tooltipTitle="Delete Hook"
@@ -837,8 +846,11 @@ export default class HookForm extends Component {
                 tooltipOpen
                 icon={<FlashIcon />}
                 onClick={onDialogOpen}
-                className={classes.successIcon}
-                ButtonProps={{
+                classes={{
+                  icon: classes.successIcon,
+                  staticTooltipLabel: classes.successTooltipLabel,
+                }}
+                FabProps={{
                   disabled: !this.validHook() || actionLoading,
                 }}
                 tooltipTitle="Trigger Hook"
@@ -858,14 +870,14 @@ export default class HookForm extends Component {
             confirmText="Trigger Hook"
             body={
               <Fragment>
-                <Typography gutterBottom>
+                <Typography variant="body2" gutterBottom>
                   Trigger Hook{' '}
                   <code>
                     {hook.hookGroupId}/{hook.hookId}
                   </code>{' '}
                   with the following context:
                 </Typography>
-                <Grid container spacing={16}>
+                <Grid container spacing={2}>
                   <Grid item lg={6} md={6} sm={12}>
                     <Typography gutterBottom variant="subtitle1">
                       Context
@@ -901,7 +913,7 @@ export default class HookForm extends Component {
             error={dialogError}
             confirmText="Delete Hook"
             body={
-              <Typography>
+              <Typography variant="body2">
                 This will delete {hook.hookGroupId}/{hook.hookId}
               </Typography>
             }

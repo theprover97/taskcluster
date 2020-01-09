@@ -34,7 +34,7 @@ exports.secrets = new Secrets({
 /**
  * Set helper.<Class> for each of the Azure entities used in the service
  */
-exports.withEntities = (mock, skipping, options={}) => {
+exports.withEntities = (mock, skipping, options = {}) => {
   withEntity(mock, skipping, exports, 'CachePurge', data.CachePurge);
 };
 
@@ -43,6 +43,7 @@ exports.withEntities = (mock, skipping, options={}) => {
  */
 exports.withServer = (mock, skipping) => {
   let webServer;
+  let cachePurgeCache = {};
 
   suiteSetup(async function() {
     if (skipping()) {
@@ -62,6 +63,8 @@ exports.withServer = (mock, skipping) => {
 
     exports.PurgeCacheClient = taskcluster.createClient(builder.reference());
 
+    exports.load.inject('cachePurgeCache', cachePurgeCache);
+
     exports.apiClient = new exports.PurgeCacheClient({
       credentials: {
         clientId: 'test-client',
@@ -71,6 +74,10 @@ exports.withServer = (mock, skipping) => {
     });
 
     webServer = await exports.load('server');
+  });
+
+  setup(function() {
+    Object.keys(cachePurgeCache).forEach(k => delete cachePurgeCache[k]);
   });
 
   suiteTeardown(async function() {

@@ -25,11 +25,12 @@ import { secret } from '../../utils/prop-types';
 @withStyles(theme => ({
   fab: {
     ...theme.mixins.fab,
+    ...theme.mixins.actionButton,
   },
   saveSecretSpan: {
     position: 'fixed',
-    bottom: theme.spacing.double,
-    right: theme.spacing.unit * 11,
+    bottom: theme.spacing(2),
+    right: theme.spacing(11),
   },
   editorListItem: {
     paddingTop: 0,
@@ -37,7 +38,7 @@ import { secret } from '../../utils/prop-types';
     flexDirection: 'column',
     alignItems: 'start',
     '&> :last-child': {
-      marginTop: theme.spacing.unit,
+      marginTop: theme.spacing(1),
     },
   },
   saveIcon: {
@@ -45,6 +46,9 @@ import { secret } from '../../utils/prop-types';
   },
   deleteIcon: {
     ...theme.mixins.errorIcon,
+  },
+  deleteTooltipLabel: {
+    backgroundColor: theme.mixins.errorIcon.backgroundColor,
   },
   secretSubheader: {
     display: 'flex',
@@ -144,7 +148,7 @@ export default class SecretForm extends Component {
     try {
       safeLoad(editorValue);
 
-      return secretName && expires;
+      return secretName && expires && editorValue;
     } catch (err) {
       return false;
     }
@@ -197,9 +201,9 @@ export default class SecretForm extends Component {
           )}
           <ListItem>
             <DatePicker
+              label="Expires"
               value={expires}
               onChange={this.handleExpirationChange}
-              format="yyyy/MM/dd"
               maxDate={addYears(new Date(), 1001)}
             />
           </ListItem>
@@ -267,9 +271,12 @@ export default class SecretForm extends Component {
                 tooltipOpen
                 icon={<DeleteIcon />}
                 onClick={onDialogActionOpen}
-                className={classes.deleteIcon}
+                classes={{
+                  icon: classes.deleteIcon,
+                  staticTooltipLabel: classes.deleteTooltipLabel,
+                }}
                 tooltipTitle="Delete Secret"
-                ButtonProps={{
+                FabProps={{
                   disabled: loading,
                 }}
               />
@@ -286,7 +293,9 @@ export default class SecretForm extends Component {
             error={dialogError}
             title="Delete Secret?"
             body={
-              <Typography>This will delete the secret {secretName}.</Typography>
+              <Typography variant="body2">
+                This will delete the secret {secretName}.
+              </Typography>
             }
             confirmText="Delete Secret"
           />
